@@ -40,7 +40,6 @@ void PTZCameraThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr
   cv::Point3f pnp_coordinate_mm;
   float pnp_depth;
   int yolo_res_selected_id;
-  float dist_to_select_point;
 
   while (cv::waitKey(1) != 'q') try {
       auto frames = pipe.wait_for_frames();
@@ -48,64 +47,78 @@ void PTZCameraThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr
       auto aligned_set = align_to.process(frames);
       auto color_frame = aligned_set.get_color_frame();
       src_img = frame_to_mat(color_frame);
-
       auto res = detect_ball->Detect(src_img);
-      dist_to_select_point = depth_frame.get_distance(670, 400);
 
       //选择检测方框在视野中最下位置的块
       if (rectFilter(res, src_img, object_2d_rect, yolo_res_selected_id)) {
-        bool catch_cube_mode = robo_inf.catch_cube_mode.load();
-        catch_cube_mode = 1;
-        static bool make_cude_middle_mode{true};
-        static bool make_cube_front_mode{false};
+        bool catch_cube_mode = robo_inf.catch_cube_mode.load(); //是否进行抓块识别
+        catch_cube_mode = true;
+        static bool make_cude_middle_mode{false};
+        static bool make_cube_front_mode{true};
         if (catch_cube_mode) {
           //自旋 R2 至方块在视野中间
           if (make_cude_middle_mode) {
+            static int cube_middle_detect_times{0};
             pnp->solvePnP(object_3d_rect, object_2d_rect, pnp_angle,
                           pnp_coordinate_mm, pnp_depth);
+            if (pnp_angle.y < 1.f && pnp_angle.y > -1.f) {
+              // cube_middle_detect_times++;
+            } else {
+              RoboSpinCmdUartBuff uart_temp_struct;
+              uart_temp_struct.yaw_angle = pnp_angle.y;
+              serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+              cv::putText(src_img, "spin angle:" + std::to_string(uart_temp_struct.yaw_angle),
+                          cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
+                          cv::Scalar(0, 150, 255), 1);
+            }
 
-            RoboSpinCmdUartBuff uart_temp_struct;
-            uart_temp_struct.yaw_angle = pnp_angle.y;
-            serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
-            
-            cv::putText(src_img, "spin angle:" + std::to_string(uart_temp_struct.yaw_angle),
-                        cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
-                        cv::Scalar(0, 150, 255), 1);
-
-            static int cube_middle_detect_times{0};
-            if (pnp_angle.x < 1.f && pnp_angle.x > -1.f)
-              cube_middle_detect_times++;
             if (cube_middle_detect_times > 10) {
+              RoboSpinCmdUartBuff uart_temp_struct;
+              uart_temp_struct.yaw_angle = 0.f;
+              for (int i = 0; i < 3; i++)
+                serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+              cube_middle_detect_times = 0;
               make_cude_middle_mode = false;
               make_cube_front_mode = true;
             }
           }
           // R1 前进至方块跟前
           if (make_cube_front_mode) {
-            if (dist_to_select_point > 0.5f && dist_to_select_point != 0.f) {
-              RoboGoCmdUartBuff uart_temp_struct;
-              uart_temp_struct.distance = dist_to_select_point - 0.5f;
-              serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+            cv::Mat depth_frame_Mat = depth_frame_to_meters(depth_frame);
+            cv::Mat depth_frame_Mat_mean_mask;
+            cv::Rect object_2d_measure_depth_rect(object_2d_rect.x + object_2d_rect.width / 3,
+                                          object_2d_rect.y + object_2d_rect.width * 0.1,
+                                          object_2d_rect.width / 3,
+                                          30);
+            //去除距离为 0 的点
+            cv::Mat object_2d_measure_depth_rect_roi = depth_frame_Mat(object_2d_measure_depth_rect);
+            cv::inRange(object_2d_measure_depth_rect_roi, 0.01f, 2.f, depth_frame_Mat_mean_mask);
+            cv::rectangle(src_img, object_2d_measure_depth_rect, cv::Scalar(0, 255, 0));
+            cv::Scalar object_2d_measure_depth_rect_avg_dist = cv::mean(object_2d_measure_depth_rect_roi,
+                                                                        depth_frame_Mat_mean_mask);
 
-              cv::putText(src_img, "go dis:" + std::to_string(uart_temp_struct.distance),
-                          cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
-                          cv::Scalar(0, 150, 255), 1);
-            }
+            cv::putText(src_img, std::to_string(object_2d_measure_depth_rect_avg_dist[0]),
+                        cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
+                        cv::Scalar(0, 150, 255), 1);
+
             static int cude_front_detect_times{0};
             if (cude_front_detect_times > 10) {
               RoboCatchCmdUartBuff uart_temp_struct;
-              for (int i = 0; i < 5; i++)
+              for (int i = 0; i < 3; i++)
                 serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
 
               cv::putText(src_img, "catch sign",
                           cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
                           cv::Scalar(0, 150, 255), 1);
+
+              cude_front_detect_times = 0;
+              make_cude_middle_mode = true;
               make_cube_front_mode = false;
               catch_cube_mode = false;
             }
           }
         } else {
-          make_cude_middle_mode = false;
+          make_cude_middle_mode = true;
           make_cube_front_mode = false;
         }
 
@@ -124,12 +137,6 @@ void PTZCameraThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr
 #endif
       }
 #ifndef RELEASE
-      cv::Rect dist_measure_rect(670, 430, 2, 2);
-      cv::rectangle(src_img, dist_measure_rect, cv::Scalar(0, 150, 255),
-                    2);  //测距固定点标识
-      cv::putText(src_img, "dist sp:" + std::to_string(dist_to_select_point),
-                  cv::Point(0, 50), cv::FONT_HERSHEY_DUPLEX, 1,
-                  cv::Scalar(0, 150, 255), 1);
       if (!src_img.empty()) cv::imshow("img", src_img);
 #endif
       if (cv::waitKey(1) == 'q') break;
