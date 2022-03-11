@@ -49,6 +49,13 @@ struct RoboInfUartBuff {
   bool catch_cube_mode {false};
 } __attribute__((packed));
 
+enum CatchMode {
+  wait = 0,
+  spin,
+  go,
+  catch_cube
+};
+
 bool rectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
                 cv::Rect &rect, int &select_id) {
   float max_x_axis = .0;
