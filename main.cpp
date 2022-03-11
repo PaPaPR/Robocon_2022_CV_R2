@@ -42,118 +42,118 @@ void PTZCameraThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr
   int yolo_res_selected_id;
 
   while (cv::waitKey(1) != 'q') try {
-      auto frames = pipe.wait_for_frames();
-      auto depth_frame = frames.get_depth_frame();
-      auto aligned_set = align_to.process(frames);
-      auto color_frame = aligned_set.get_color_frame();
-      src_img = frame_to_mat(color_frame);
-      auto res = detect_ball->Detect(src_img);
-
-      //选择检测方框在视野中最下位置的块
-      if (rectFilter(res, src_img, object_2d_rect, yolo_res_selected_id)) {
-        // bool catch_cube_mode = robo_inf.catch_cube_mode.load(); //是否进行抓块识别
-        CatchMode catch_mode;
-        if (robo_inf.catch_cube_mode.load())
-          catch_mode = CatchMode::spin;
-        else
-          catch_mode = CatchMode::wait;
-        switch (catch_mode)
-        {
-        case CatchMode::wait:
-          break;
-
-        case CatchMode::spin:
-          static int cube_middle_detect_times{0};
-          pnp->solvePnP(object_3d_rect, object_2d_rect, pnp_angle,
-                        pnp_coordinate_mm, pnp_depth);
-
-          if (cube_middle_detect_times > 10) {
-            RoboSpinCmdUartBuff uart_temp_struct;
-            uart_temp_struct.yaw_angle = 0.f;
-            for (int i = 0; i < 3; i++)
-              serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
-
-            cube_middle_detect_times = 0;
-            catch_mode = CatchMode::go;
-          } else {
-            if (pnp_angle.y < 1.5f && pnp_angle.y > -1.5f) {
-              // cube_middle_detect_times++;
-            } else {
-              RoboSpinCmdUartBuff uart_temp_struct;
-              uart_temp_struct.yaw_angle = pnp_angle.y;
-              serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
-              cv::putText(src_img, "spin angle:" + std::to_string(uart_temp_struct.yaw_angle),
-                          cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
-                          cv::Scalar(0, 150, 255), 1);
-            }
-          }
-          break;
-
-        case CatchMode::go: {
-          cv::Mat depth_frame_Mat = depth_frame_to_meters(depth_frame);
-          cv::Mat depth_frame_Mat_mean_mask;
-          cv::Rect object_2d_measure_depth_rect(object_2d_rect.x + object_2d_rect.width / 3,
-                                        object_2d_rect.y + object_2d_rect.width * 0.1,
-                                        object_2d_rect.width / 3,
-                                        30);
-          //去除距离为 0 的点
-          cv::Mat object_2d_measure_depth_rect_roi = depth_frame_Mat(object_2d_measure_depth_rect);
-          cv::inRange(object_2d_measure_depth_rect_roi, 0.01f, 2.f, depth_frame_Mat_mean_mask);
-          cv::rectangle(src_img, object_2d_measure_depth_rect, cv::Scalar(0, 255, 0));
-          cv::Scalar object_2d_measure_depth_rect_avg_dist = cv::mean(object_2d_measure_depth_rect_roi,
-                                                                      depth_frame_Mat_mean_mask);
-
-          cv::putText(src_img, std::to_string(object_2d_measure_depth_rect_avg_dist[0]),
-                      cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
-                      cv::Scalar(0, 150, 255), 1);
-
-          static int cude_front_detect_times{0};
-          
-          if (cude_front_detect_times > 10) {
-            RoboGoCmdUartBuff uart_temp_struct;
-            uart_temp_struct.distance = 0.f;
-            for (int i = 0; i < 3; i++)
-              serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
-
-            RoboCatchCmdUartBuff uart_temp_struct2;
-            for (int i = 0; i < 3; i++)
-              serial->write((uint8_t *)&uart_temp_struct2, sizeof(uart_temp_struct2));
-            fmt::print("catch sign send.\n");
-
-            cude_front_detect_times = 0;
-            catch_mode = CatchMode::catch_cube;
-          } else {
-            if (object_2d_measure_depth_rect_avg_dist[0] < 0.1) {
-              // cude_front_detect_times++;
-            } else {
-              RoboGoCmdUartBuff uart_temp_struct;
-              uart_temp_struct.distance = object_2d_measure_depth_rect_avg_dist[0];
-              serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
-            }
-          }
-          break;
-        }
-        default:
-          break;
-        }
-
-#ifndef RELEASE
-        cv::namedWindow("interface");
-        cv::moveWindow("interface", 0, 0);
-        for (long unsigned int i = 0; i < res.size(); i++)
-          cv::rectangle(src_img, get_rect(src_img, res[i].bbox),
-                        cv::Scalar(0, 255, 0), 2);
-
-        cv::rectangle(src_img, object_2d_rect, cv::Scalar(0, 150, 255), 2);
-        // 0-blue_yellow, 1-blue_white, 2-blue_blue, 3-red_yellow, 4-red_white,
-        // 5-red_red
-        cv::putText(src_img,
-                    std::to_string((int)res[yolo_res_selected_id].class_id),
-                    cv::Point(object_2d_rect.x, object_2d_rect.y - 1),
-                    cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 150, 255), 1);
-#endif
+    static int cube_middle_detect_times{0};
+    static int cude_front_detect_times{0};
+    if (robo_inf.catch_cube_flag.load()) {
+      if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
+        robo_inf.catch_cube_mode_status.store(CatchMode::spin);
       }
+    } else {
+      robo_inf.catch_cube_mode_status.store(CatchMode::wait);
+      cube_middle_detect_times = 0;
+      cude_front_detect_times = 0;
+      continue;
+    }
+
+    auto frames = pipe.wait_for_frames();
+    auto depth_frame = frames.get_depth_frame();
+    auto aligned_set = align_to.process(frames);
+    auto color_frame = aligned_set.get_color_frame();
+    src_img = frame_to_mat(color_frame);
+    auto res = detect_ball->Detect(src_img);
+
+    //选择检测方框在视野中最下位置的块
+    if (rectFilter(res, src_img, object_2d_rect, yolo_res_selected_id)) {
+      switch (robo_inf.catch_cube_mode_status.load())
+      {
+      case CatchMode::spin:
+        pnp->solvePnP(object_3d_rect, object_2d_rect, pnp_angle,
+                      pnp_coordinate_mm, pnp_depth);
+
+        if (cube_middle_detect_times < 10) {
+          if (pnp_angle.y < 1.5f && pnp_angle.y > -1.5f) {
+            cube_middle_detect_times++;
+          } else {
+            RoboSpinCmdUartBuff uart_temp_struct;
+            uart_temp_struct.yaw_angle = pnp_angle.y;
+            serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+            cv::putText(src_img, "spin angle:" + std::to_string(uart_temp_struct.yaw_angle),
+                        cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
+                        cv::Scalar(0, 150, 255), 1);
+          }
+        } else {
+          RoboSpinCmdUartBuff uart_temp_struct;
+          uart_temp_struct.yaw_angle = 0.f;
+          for (int i = 0; i < 3; i++)
+            serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+
+          cube_middle_detect_times = 0;
+          robo_inf.catch_cube_mode_status.store(CatchMode::go);
+        }
+        break;
+
+      case CatchMode::go: {
+        cv::Mat depth_frame_Mat = depth_frame_to_meters(depth_frame);
+        cv::Mat depth_frame_Mat_mean_mask;
+        cv::Rect object_2d_measure_depth_rect(object_2d_rect.x + object_2d_rect.width / 3,
+                                              object_2d_rect.y + object_2d_rect.width * 0.1,
+                                              object_2d_rect.width / 3,
+                                              30);
+        //去除距离为 0 的点
+        cv::Mat object_2d_measure_depth_rect_roi = depth_frame_Mat(object_2d_measure_depth_rect);
+        cv::inRange(object_2d_measure_depth_rect_roi, 0.01f, 2.f, depth_frame_Mat_mean_mask);
+        cv::rectangle(src_img, object_2d_measure_depth_rect, cv::Scalar(0, 255, 0));
+        cv::Scalar object_2d_measure_depth_rect_avg_dist = cv::mean(object_2d_measure_depth_rect_roi,
+                                                                    depth_frame_Mat_mean_mask);
+
+        cv::putText(src_img, std::to_string(object_2d_measure_depth_rect_avg_dist[0]),
+                    cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
+                    cv::Scalar(0, 150, 255), 1);
+        
+        if (cude_front_detect_times > 10) {
+          if (object_2d_measure_depth_rect_avg_dist[0] < 0.1) {
+            cude_front_detect_times++;
+          } else {
+            RoboGoCmdUartBuff uart_temp_struct;
+            uart_temp_struct.distance = object_2d_measure_depth_rect_avg_dist[0];
+            serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+          }
+        } else {
+          RoboGoCmdUartBuff uart_temp_struct;
+          uart_temp_struct.distance = 0.f;
+          for (int i = 0; i < 3; i++)
+            serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+
+          RoboCatchCmdUartBuff uart_temp_struct2;
+          for (int i = 0; i < 3; i++)
+            serial->write((uint8_t *)&uart_temp_struct2, sizeof(uart_temp_struct2));
+          fmt::print("catch sign send.\n");
+
+          cude_front_detect_times = 0;
+          robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
+        }
+        break;
+      }
+      default:
+        break;
+      }
+
 #ifndef RELEASE
+      for (long unsigned int i = 0; i < res.size(); i++)
+        cv::rectangle(src_img, get_rect(src_img, res[i].bbox),
+                      cv::Scalar(0, 255, 0), 2);
+      cv::rectangle(src_img, object_2d_rect, cv::Scalar(0, 150, 255), 2);
+      // 0-blue_yellow, 1-blue_white, 2-blue_blue, 3-red_yellow, 4-red_white,
+      // 5-red_red
+      cv::putText(src_img,
+                  std::to_string((int)res[yolo_res_selected_id].class_id),
+                  cv::Point(object_2d_rect.x, object_2d_rect.y - 1),
+                  cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 150, 255), 1);
+#endif
+    }
+#ifndef RELEASE
+      cv::namedWindow("interface");
+      cv::moveWindow("interface", 0, 0);
       if (!src_img.empty()) cv::imshow("interface", src_img);
 #endif
       if (cv::waitKey(1) == 'q') break;

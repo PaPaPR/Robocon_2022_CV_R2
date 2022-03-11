@@ -1,6 +1,13 @@
 #pragma once
 #include <atomic>
 
+enum CatchMode {
+  wait = 0,
+  spin,
+  go,
+  catch_cube
+};
+
 struct RoboCmd {
   std::atomic<float> pitch_angle = 0.f;
   std::atomic<float> yaw_angle = 0.f;
@@ -9,7 +16,8 @@ struct RoboCmd {
 };
 
 struct RoboInf {
-  std::atomic<bool> catch_cube_mode {false};
+  std::atomic<bool> catch_cube_flag {false};
+  std::atomic<CatchMode> catch_cube_mode_status {CatchMode::wait};
 };
 
 //structs below are used to uart to send and recive info
@@ -48,13 +56,6 @@ struct RoboCatchCmdUartBuff {
 struct RoboInfUartBuff {
   bool catch_cube_mode {false};
 } __attribute__((packed));
-
-enum CatchMode {
-  wait = 0,
-  spin,
-  go,
-  catch_cube
-};
 
 bool rectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
                 cv::Rect &rect, int &select_id) {
