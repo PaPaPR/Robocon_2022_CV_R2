@@ -16,8 +16,8 @@ struct RoboCmd {
 };
 
 struct RoboInf {
-  std::atomic<bool> catch_cube_mode {false};
-  std::atomic<bool> detect_cube_mode {false};
+  std::atomic<bool> catch_cube_mode {false}; //自动模式（自动对位并进行识别）
+  std::atomic<bool> detect_cube_mode {false}; //手动模式（仅进行积木状态识别）
   std::atomic<CatchMode> catch_cube_mode_status {CatchMode::wait};
 };
 
