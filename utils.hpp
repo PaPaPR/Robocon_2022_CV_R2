@@ -16,7 +16,7 @@ struct RoboCmd {
 };
 
 struct RoboInf {
-  std::atomic<bool> catch_cube_flag {false};
+  std::atomic<bool> catch_cube_mode {false};
   std::atomic<bool> detect_cube_mode {false};
   std::atomic<CatchMode> catch_cube_mode_status {CatchMode::wait};
 };
@@ -48,9 +48,11 @@ struct RoboGoCmdUartBuff {
 } __attribute__((packed));
 
 //send R2 catch command
+// cube_state: 0x01 - yellow, 0x02 - white, 0x03 - stand
 struct RoboCatchCmdUartBuff {
   uint8_t S_flag = 'S';
   uint8_t cmd_type = 0x03;
+  uint8_t cube_state = 0x00;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 

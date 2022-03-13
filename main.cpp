@@ -48,11 +48,14 @@ void topCameraThread(
   while (cv::waitKey(1) != 'q') try {
     static int cube_middle_detect_times{0};
     static int cude_front_detect_times{0};
-    if (robo_inf.catch_cube_flag.load()) {
+    if (robo_inf.catch_cube_mode.load()) {
       if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
-        robo_inf.catch_cube_mode_status.store(CatchMode::spin);
-      }
-    } else {
+        robo_inf.catch_cube_mode_status.store(CatchMode::spin);}
+    } else if (robo_inf.detect_cube_mode.load()) {
+      if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
+        robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);}
+    } else if (!robo_inf.catch_cube_mode.load() &&
+               !robo_inf.detect_cube_mode.load()) {
       robo_inf.catch_cube_mode_status.store(CatchMode::wait);
       cube_middle_detect_times = 0;
       cude_front_detect_times = 0;
@@ -70,7 +73,7 @@ void topCameraThread(
     if (rectFilter(res, src_img, object_2d_rect, yolo_res_selected_id)) {
       switch (robo_inf.catch_cube_mode_status.load())
       {
-      case CatchMode::spin:
+      case CatchMode::spin: {
         pnp->solvePnP(object_3d_rect, object_2d_rect, pnp_angle,
                       pnp_coordinate_mm, pnp_depth);
 
@@ -95,6 +98,7 @@ void topCameraThread(
           robo_inf.catch_cube_mode_status.store(CatchMode::go);
         }
         break;
+      }
 
       case CatchMode::go: {
         cv::Mat depth_frame_Mat = depth_frame_to_meters(depth_frame);
@@ -128,16 +132,34 @@ void topCameraThread(
           for (int i = 0; i < 3; i++)
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
 
-          RoboCatchCmdUartBuff uart_temp_struct2;
-          for (int i = 0; i < 3; i++)
-            serial->write((uint8_t *)&uart_temp_struct2, sizeof(uart_temp_struct2));
-          fmt::print("catch sign send.\n");
-
-          cude_front_detect_times = 0;
           robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
+          cude_front_detect_times = 0;
         }
         break;
       }
+
+      case CatchMode::catch_cube: {
+        RoboCatchCmdUartBuff uart_temp_struct2;
+        //To-do: 取多次识别的结果发送
+        if ((int)res[yolo_res_selected_id].class_id == 0 ||
+            (int)res[yolo_res_selected_id].class_id == 3) {
+          uart_temp_struct2.cube_state = 0x01;
+        } else if ((int)res[yolo_res_selected_id].class_id == 1 ||
+                    (int)res[yolo_res_selected_id].class_id == 4) {
+          uart_temp_struct2.cube_state = 0x02;
+        } else if ((int)res[yolo_res_selected_id].class_id == 2 ||
+                    (int)res[yolo_res_selected_id].class_id == 5) {
+          uart_temp_struct2.cube_state = 0x03;
+        }
+
+        for (int i = 0; i < 3; i++)
+          serial->write((uint8_t *)&uart_temp_struct2, sizeof(uart_temp_struct2));
+        fmt::print("catch sign send.\n");
+
+        robo_inf.catch_cube_mode_status.store(CatchMode::wait);
+        break;
+      }
+
       default:
         break;
       }
@@ -180,10 +202,6 @@ void sideCameraThread(
 
   cv::Mat src_img;
   cv::Rect object_2d_rect;
-  cv::Rect object_3d_rect(0, 0, 140, 140);
-  cv::Point2f pnp_angle;
-  cv::Point3f pnp_coordinate_mm;
-  float pnp_depth;
   int yolo_res_selected_id;
 
   while (true) try {
