@@ -17,6 +17,7 @@ struct RoboCmd {
 
 struct RoboInf {
   std::atomic<bool> catch_cube_flag {false};
+  std::atomic<bool> detect_cube_mode {false};
   std::atomic<CatchMode> catch_cube_mode_status {CatchMode::wait};
 };
 
@@ -53,8 +54,18 @@ struct RoboCatchCmdUartBuff {
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 
+//send R2 cube status
+//0x01 white 0x02 yellow
+struct RoboCubeStateUartBuff {
+  uint8_t S_flag = 'S';
+  uint8_t cube_status = 0x00;
+  uint8_t E_flag = 'E';
+} __attribute__((packed));
+
+//uart recive
 struct RoboInfUartBuff {
   bool catch_cube_mode {false};
+  bool detect_cube_mode {false};
 } __attribute__((packed));
 
 bool rectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
@@ -64,6 +75,24 @@ bool rectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
   for (size_t i = 0; i < res.size(); i++) {
     if (res[i].bbox[1] > max_x_axis) {
       max_x_axis = res[i].bbox[1];
+      select_id = i;
+    }
+  }
+  if (select_id != -1) {
+    rect = get_rect(img, res[select_id].bbox);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool sideRectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
+                    cv::Rect &rect, int &select_id) {
+  select_id = -1;
+  for (size_t i = 0; i < res.size(); i++) {
+    if (res[i].bbox[0] > img.rows / 3 && res[i].bbox[0] > img.rows / 3 * 2 &&
+        res[i].bbox[1] > img.cols / 3 && res[i].bbox[1] > img.cols / 3 * 2)
+    {
       select_id = i;
     }
   }
