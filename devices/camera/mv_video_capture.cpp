@@ -105,7 +105,7 @@ bool VideoCapture::cameraInit(const int _CAMERA_RESOLUTION_COLS,
       CameraSetImageResolution(hCamera, &pImageResolution);
 
       // 设置曝光时间
-      // CameraGetAeState(hCamera, &AEstate);
+      CameraGetAeState(hCamera, &AEstate);
       CameraSetAeState(hCamera, FALSE);
       CameraSetExposureTime(hCamera, _CAMERA_EXPOSURETIME);
 
@@ -119,7 +119,7 @@ bool VideoCapture::cameraInit(const int _CAMERA_RESOLUTION_COLS,
       // CameraSetGain(hCamera, 160, 123, 100);
 
       // 设置相机增益值
-      CameraSetAnalogGain(hCamera, 20000);
+      CameraSetAnalogGain(hCamera, 10000);
 
       // 让SDK进入工作模式
       CameraPlay(hCamera);
