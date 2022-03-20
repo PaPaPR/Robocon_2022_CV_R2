@@ -20,16 +20,6 @@ class RoboSerial : public serial::Serial {
     }
   }
 
-  void WriteInfo(RoboCmd &robo_cmd) {
-    RoboCmdUartBuff t1;
-    t1.yaw_angle = robo_cmd.yaw_angle.load();
-    t1.pitch_angle = robo_cmd.pitch_angle.load();
-    t1.depth = robo_cmd.depth.load();
-    t1.detect_object = robo_cmd.detect_object.load();
-
-    this->write((uint8_t *)&t1, sizeof(t1));
-  }
-
   void ReceiveInfo(RoboInf &robo_inf) {
     RoboInfUartBuff uart_buff_struct;
     uint8_t uart_S_flag;

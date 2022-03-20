@@ -8,13 +8,6 @@ enum CatchMode {
   catch_cube
 };
 
-struct RoboCmd {
-  std::atomic<float> pitch_angle = 0.f;
-  std::atomic<float> yaw_angle = 0.f;
-  std::atomic<float> depth = 0.f;
-  std::atomic<uint8_t> detect_object {false};
-};
-
 struct RoboInf {
   std::atomic<bool> auto_catch_cube_mode {false}; // 自动模式（自动对位并进行识别）
   std::atomic<bool> manual_catch_cube_mode {false}; // 手动模式（没有自动对位）

@@ -20,8 +20,7 @@
 
 using namespace std::chrono_literals;
 
-void topCameraThread(
-    RoboCmd &robo_cmd, RoboInf &robo_inf,
+void topCameraThread(RoboInf &robo_inf,
     const std::shared_ptr<RoboSerial> &serial) {
   rs2::pipeline pipe;
   rs2::config cfg;
@@ -31,7 +30,7 @@ void topCameraThread(
   rs2::align align_to(RS2_STREAM_COLOR);
 
   auto detect_cube_top = std::make_shared<YOLOv5TRT>(
-      fmt::format("{}{}", SOURCE_PATH, "/models/Cube_top.engine"));
+      fmt::format("{}{}", SOURCE_PATH, "/models/Cube_side.engine"));
 
   auto pnp = std::make_shared<solvepnp::PnP>(
       fmt::format("{}{}", CONFIG_FILE_PATH, "/d435i.xml"),
@@ -48,13 +47,13 @@ void topCameraThread(
   while (cv::waitKey(1) != 'q') try {
     static int cube_middle_detect_times{0};
     static int cude_front_detect_times{0};
-    if (robo_inf.catch_cube_mode.load()) {
+    if (robo_inf.auto_catch_cube_mode.load()) {
       if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
         robo_inf.catch_cube_mode_status.store(CatchMode::spin);}
     } else if (robo_inf.detect_cube_mode.load()) {
       if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
         robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);}
-    } else if (!robo_inf.catch_cube_mode.load() &&
+    } else if (!robo_inf.auto_catch_cube_mode.load() &&
                !robo_inf.detect_cube_mode.load()) {
       robo_inf.catch_cube_mode_status.store(CatchMode::wait);
       cube_middle_detect_times = 0;
@@ -195,8 +194,7 @@ void topCameraThread(
     }
 }
 
-void sideCameraThread(
-    RoboCmd &robo_cmd, RoboInf &robo_inf,
+void sideCameraThread(RoboInf &robo_inf,
     const std::shared_ptr<RoboSerial> &serial,
     const std::shared_ptr<nadjieb::MJPEGStreamer> &streamer_ptr) {
   int camera_exposure = 5000;
@@ -271,8 +269,9 @@ void uartReadThread(const std::shared_ptr<RoboSerial> &serial,
     }
 }
 
-void uartThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr<RoboSerial> &serial) {
-  std::thread uart_read_thread(uartReadThread, std::ref(serial), std::ref(robo_inf));
+void uartThread(RoboInf &robo_inf, const std::shared_ptr<RoboSerial> &serial) {
+  std::thread uart_read_thread(uartReadThread, std::ref(serial),
+                               std::ref(robo_inf));
   uart_read_thread.detach();
 
   while (true) try {
@@ -317,7 +316,6 @@ void uartThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr<Robo
 }
 
 int main(int argc, char *argv[]) {
-  RoboCmd robo_cmd;
   RoboInf robo_inf;
 
   auto streamer_ptr = std::make_shared<nadjieb::MJPEGStreamer>();
@@ -325,11 +323,11 @@ int main(int argc, char *argv[]) {
 
   auto serial = std::make_shared<RoboSerial>("/dev/ttyUSB0", 115200);
 
-  std::thread uart_thread(uartThread, std::ref(robo_cmd), std::ref(robo_inf), std::ref(serial));
+  std::thread uart_thread(uartThread, std::ref(robo_inf), std::ref(serial));
   uart_thread.detach();
 
-  std::thread top_camera_thread(topCameraThread, std::ref(robo_cmd),
-                                std::ref(robo_inf), std::ref(serial));
+  std::thread top_camera_thread(topCameraThread, std::ref(robo_inf),
+                                std::ref(serial));
   top_camera_thread.detach();
 
   std::thread side_camera_thread(sideCameraThread, std::ref(robo_cmd),
