@@ -16,30 +16,21 @@ struct RoboCmd {
 };
 
 struct RoboInf {
-  std::atomic<bool> catch_cube_mode {false}; //自动模式（自动对位并进行识别）
-  std::atomic<bool> detect_cube_mode {false}; //手动模式（仅进行积木状态识别）
+  std::atomic<bool> auto_catch_cube_mode {false}; // 自动模式（自动对位并进行识别）
+  std::atomic<bool> manual_catch_cube_mode {false}; // 手动模式（没有自动对位）
+  std::atomic<bool> detect_cube_mode {false}; // 识别立起积木模式（仅进行积木状态识别）
   std::atomic<CatchMode> catch_cube_mode_status {CatchMode::wait};
 };
 
-//structs below are used to uart to send and recive info
-struct RoboCmdUartBuff {
-  uint8_t S_flag = 'S';
-  float pitch_angle = 0.f;
-  float yaw_angle = 0.f;
-  float depth = 0.f;
-  uint8_t detect_object {false};
-  uint8_t E_flag = 'E';
-} __attribute__((packed));
-
-//send R2 spin command
+// send R2 spin command
 struct RoboSpinCmdUartBuff {
   uint8_t S_flag = 'S';
   uint8_t cmd_type = 0x01;
-  float yaw_angle = 0;
+  float yaw_angle = 0.f;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 
-//send R2 spin command
+// send R2 spin command
 struct RoboGoCmdUartBuff {
   uint8_t S_flag = 'S';
   uint8_t cmd_type = 0x02;
@@ -47,26 +38,32 @@ struct RoboGoCmdUartBuff {
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 
-//send R2 catch command
+// send R2 catch command
 // cube_state: 0x01 - yellow, 0x02 - white, 0x03 - stand
+// cube_type: 0x01 - 0x05
 struct RoboCatchCmdUartBuff {
   uint8_t S_flag = 'S';
   uint8_t cmd_type = 0x03;
   uint8_t cube_state = 0x00;
+  uint8_t cube_type = 0x00;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 
-//send R2 cube status
-//0x01 white 0x02 yellow
+// send R2 cube status
+// 0x01 white 0x02 yellow
+// cube_type: 0x01 - 0x05
 struct RoboCubeStateUartBuff {
   uint8_t S_flag = 'S';
+  uint8_t cmd_type = 0x04;
   uint8_t cube_status = 0x00;
+  uint8_t cube_type = 0x00;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 
 //uart recive
 struct RoboInfUartBuff {
-  bool catch_cube_mode {false};
+  bool auto_catch_cube_mode {false};
+  bool manual_catch_cube_mode {false};
   bool detect_cube_mode {false};
 } __attribute__((packed));
 
