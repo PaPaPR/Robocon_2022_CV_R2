@@ -70,18 +70,26 @@ struct RoboInfUartBuff {
   bool detect_cube_mode {false};
 } __attribute__((packed));
 
+//选择在图像 x 轴 1/3 - 2/3 范围中，距离夹子最近的积木
 bool rectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
                 cv::Rect &rect, int &select_id) {
-  float max_x_axis = .0;
-  select_id = -1;
+  std::vector<Yolo::Detection> middle_res;
   for (size_t i = 0; i < res.size(); i++) {
-    if (res[i].bbox[1] > max_x_axis) {
-      max_x_axis = res[i].bbox[1];
+    if (res[i].bbox[1] > img.cols * 0.3 && res[i].bbox[1] < img.cols * 0.6) {
+      middle_res.emplace_back(res[i]);
+    }
+  }
+  
+  float max_y_axis = .0;
+  select_id = -1;
+  for (size_t i = 0; i < middle_res.size(); i++) {
+    if (middle_res[i].bbox[1] > max_y_axis) {
+      max_y_axis = middle_res[i].bbox[1];
       select_id = i;
     }
   }
   if (select_id != -1) {
-    rect = get_rect(img, res[select_id].bbox);
+    rect = get_rect(img, middle_res[select_id].bbox);
     return true;
   } else {
     return false;
