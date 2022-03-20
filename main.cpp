@@ -14,6 +14,7 @@
 #include "cv-helpers.hpp"
 #include "devices/serial/serial.hpp"
 #include "devices/camera/mv_video_capture.hpp"
+#include "devices/catch_keyboard.hpp"
 #include "solvePnP/solvePnP.hpp"
 #include "utils.hpp"
 #include "utils/mjpeg_streamer.hpp"
@@ -315,6 +316,34 @@ void uartThread(RoboInf &robo_inf, const std::shared_ptr<RoboSerial> &serial) {
     std::this_thread::sleep_for(1000ms);
 }
 
+void KeyboardThread(std::unique_ptr<CatchKeyboard> &kb, RoboInf &robo_inf) {
+  unsigned short code;
+  while (true) try {
+    if (kb->GetEvent(code)) {
+      switch (code)
+      {
+      case 71:
+        robo_inf.auto_catch_cube_mode.store(
+          !robo_inf.auto_catch_cube_mode.load());
+        break;
+      case 72:
+        robo_inf.manual_catch_cube_mode.store(
+          !robo_inf.manual_catch_cube_mode.load());
+        break;
+      case 73:
+        robo_inf.detect_cube_mode.store(
+          !robo_inf.detect_cube_mode.load());
+        break;
+      
+      default:
+        break;
+      }
+    }
+  } catch(const std::exception& e) {
+    std::cerr << e.what() << '\n';
+  }
+}
+
 int main(int argc, char *argv[]) {
   RoboInf robo_inf;
 
@@ -323,12 +352,17 @@ int main(int argc, char *argv[]) {
 
   auto serial = std::make_shared<RoboSerial>("/dev/ttyUSB0", 115200);
 
+  auto kb = std::make_unique<CatchKeyboard>("2.4G Wireless Keyboard");
+
   std::thread uart_thread(uartThread, std::ref(robo_inf), std::ref(serial));
   uart_thread.detach();
 
   std::thread top_camera_thread(topCameraThread, std::ref(robo_inf),
                                 std::ref(serial));
   top_camera_thread.detach();
+
+  std::thread kb_thread(KeyboardThread, std::ref(kb), std::ref(robo_inf));
+  kb_thread.detach();
 
   std::thread side_camera_thread(sideCameraThread, std::ref(robo_cmd),
                                  std::ref(robo_inf), std::ref(serial),
@@ -337,7 +371,9 @@ int main(int argc, char *argv[]) {
 
   if (std::cin.get() == 'q') {
     top_camera_thread.~thread();
+    uart_thread.~thread();
     side_camera_thread.~thread();
+    kb_thread.~thread();
   }
 
   return 0;
