@@ -14,14 +14,14 @@
 #include "cv-helpers.hpp"
 #include "devices/serial/serial.hpp"
 #include "devices/camera/mv_video_capture.hpp"
+#include "devices/catch_keyboard.hpp"
 #include "solvePnP/solvePnP.hpp"
 #include "utils.hpp"
 #include "utils/mjpeg_streamer.hpp"
 
 using namespace std::chrono_literals;
 
-void topCameraThread(
-    RoboCmd &robo_cmd, RoboInf &robo_inf,
+void topCameraThread(RoboInf &robo_inf,
     const std::shared_ptr<RoboSerial> &serial) {
   rs2::pipeline pipe;
   rs2::config cfg;
@@ -31,7 +31,7 @@ void topCameraThread(
   rs2::align align_to(RS2_STREAM_COLOR);
 
   auto detect_cube_top = std::make_shared<YOLOv5TRT>(
-      fmt::format("{}{}", SOURCE_PATH, "/models/Cube_top.engine"));
+      fmt::format("{}{}", SOURCE_PATH, "/models/Cube_side.engine"));
 
   auto pnp = std::make_shared<solvepnp::PnP>(
       fmt::format("{}{}", CONFIG_FILE_PATH, "/d435i.xml"),
@@ -48,13 +48,13 @@ void topCameraThread(
   while (cv::waitKey(1) != 'q') try {
     static int cube_middle_detect_times{0};
     static int cude_front_detect_times{0};
-    if (robo_inf.catch_cube_mode.load()) {
+    if (robo_inf.auto_catch_cube_mode.load()) {
       if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
         robo_inf.catch_cube_mode_status.store(CatchMode::spin);}
     } else if (robo_inf.detect_cube_mode.load()) {
       if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
         robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);}
-    } else if (!robo_inf.catch_cube_mode.load() &&
+    } else if (!robo_inf.auto_catch_cube_mode.load() &&
                !robo_inf.detect_cube_mode.load()) {
       robo_inf.catch_cube_mode_status.store(CatchMode::wait);
       cube_middle_detect_times = 0;
@@ -168,6 +168,13 @@ void topCameraThread(
       for (long unsigned int i = 0; i < res.size(); i++)
         cv::rectangle(src_img, get_rect(src_img, res[i].bbox),
                       cv::Scalar(0, 255, 0), 2);
+      cv::line(src_img, cv::Point(src_img.cols / 3, 0),
+                cv::Point(src_img.cols / 3, src_img.rows),
+                cv::Scalar(0, 150, 255), 2);
+      cv::line(src_img, cv::Point(src_img.cols / 3 * 2, 0),
+                cv::Point(src_img.cols / 3 * 2, src_img.rows),
+                cv::Scalar(0, 150, 255), 2);
+
       cv::rectangle(src_img, object_2d_rect, cv::Scalar(0, 150, 255), 2);
       // 0-blue_yellow, 1-blue_white, 2-blue_blue, 3-red_yellow, 4-red_white,
       // 5-red_red
@@ -188,8 +195,7 @@ void topCameraThread(
     }
 }
 
-void sideCameraThread(
-    RoboCmd &robo_cmd, RoboInf &robo_inf,
+void sideCameraThread(RoboInf &robo_inf,
     const std::shared_ptr<RoboSerial> &serial,
     const std::shared_ptr<nadjieb::MJPEGStreamer> &streamer_ptr) {
   int camera_exposure = 5000;
@@ -264,8 +270,9 @@ void uartReadThread(const std::shared_ptr<RoboSerial> &serial,
     }
 }
 
-void uartThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr<RoboSerial> &serial) {
-  std::thread uart_read_thread(uartReadThread, std::ref(serial), std::ref(robo_inf));
+void uartThread(RoboInf &robo_inf, const std::shared_ptr<RoboSerial> &serial) {
+  std::thread uart_read_thread(uartReadThread, std::ref(serial),
+                               std::ref(robo_inf));
   uart_read_thread.detach();
 
   while (true) try {
@@ -309,8 +316,35 @@ void uartThread(RoboCmd &robo_cmd, RoboInf &robo_inf, const std::shared_ptr<Robo
     std::this_thread::sleep_for(1000ms);
 }
 
+void KeyboardThread(std::unique_ptr<CatchKeyboard> &kb, RoboInf &robo_inf) {
+  unsigned short code;
+  while (true) try {
+    if (kb->GetEvent(code)) {
+      switch (code)
+      {
+      case 71:
+        robo_inf.auto_catch_cube_mode.store(
+          !robo_inf.auto_catch_cube_mode.load());
+        break;
+      case 72:
+        robo_inf.manual_catch_cube_mode.store(
+          !robo_inf.manual_catch_cube_mode.load());
+        break;
+      case 73:
+        robo_inf.detect_cube_mode.store(
+          !robo_inf.detect_cube_mode.load());
+        break;
+      
+      default:
+        break;
+      }
+    }
+  } catch(const std::exception& e) {
+    std::cerr << e.what() << '\n';
+  }
+}
+
 int main(int argc, char *argv[]) {
-  RoboCmd robo_cmd;
   RoboInf robo_inf;
 
   auto streamer_ptr = std::make_shared<nadjieb::MJPEGStreamer>();
@@ -318,12 +352,17 @@ int main(int argc, char *argv[]) {
 
   auto serial = std::make_shared<RoboSerial>("/dev/ttyUSB0", 115200);
 
-  std::thread uart_thread(uartThread, std::ref(robo_cmd), std::ref(robo_inf), std::ref(serial));
+  auto kb = std::make_unique<CatchKeyboard>("2.4G Wireless Keyboard");
+
+  std::thread uart_thread(uartThread, std::ref(robo_inf), std::ref(serial));
   uart_thread.detach();
 
-  std::thread top_camera_thread(topCameraThread, std::ref(robo_cmd),
-                                std::ref(robo_inf), std::ref(serial));
+  std::thread top_camera_thread(topCameraThread, std::ref(robo_inf),
+                                std::ref(serial));
   top_camera_thread.detach();
+
+  std::thread kb_thread(KeyboardThread, std::ref(kb), std::ref(robo_inf));
+  kb_thread.detach();
 
   std::thread side_camera_thread(sideCameraThread, std::ref(robo_cmd),
                                  std::ref(robo_inf), std::ref(serial),
@@ -332,7 +371,9 @@ int main(int argc, char *argv[]) {
 
   if (std::cin.get() == 'q') {
     top_camera_thread.~thread();
+    uart_thread.~thread();
     side_camera_thread.~thread();
+    kb_thread.~thread();
   }
 
   return 0;

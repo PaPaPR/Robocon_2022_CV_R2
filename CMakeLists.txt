@@ -44,6 +44,9 @@ include_directories(devices/serial)
 add_library(serial ${serial_SRCS})
 target_link_libraries(Robocon_2022_CV_R2 serial)
 
+# evdev
+target_link_libraries(Robocon_2022_CV_R2 evdev)
+
 #TensorRTx
 find_package(CUDA REQUIRED)
 
