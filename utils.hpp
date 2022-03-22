@@ -1,6 +1,20 @@
 #pragma once
 #include <atomic>
 
+#define CUBE_1 0x01 // cube_1(biggest)
+#define CUBE_2 0x02
+#define CUBE_3 0x03
+#define CUBE_4 0x04
+#define CUBE_5 0x05
+#define CUBE_UP    0x01
+#define CUBE_DOWN  0x02
+#define CUBE_STAND 0x03
+
+#define SPIN_SIGN         0x01
+#define GO_SIGN           0X02
+#define CATCH_SIGN        0X03
+#define RETURN_CUBE_STATE 0X04
+
 enum CatchMode {
   wait = 0,
   spin,
@@ -18,7 +32,7 @@ struct RoboInf {
 // send R2 spin command
 struct RoboSpinCmdUartBuff {
   uint8_t S_flag = 'S';
-  uint8_t cmd_type = 0x01;
+  uint8_t cmd_type = SPIN_SIGN;
   float yaw_angle = 0.f;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
@@ -26,7 +40,7 @@ struct RoboSpinCmdUartBuff {
 // send R2 spin command
 struct RoboGoCmdUartBuff {
   uint8_t S_flag = 'S';
-  uint8_t cmd_type = 0x02;
+  uint8_t cmd_type = GO_SIGN;
   float distance = 0.f;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
@@ -36,7 +50,7 @@ struct RoboGoCmdUartBuff {
 // cube_type: 0x01 - 0x05
 struct RoboCatchCmdUartBuff {
   uint8_t S_flag = 'S';
-  uint8_t cmd_type = 0x03;
+  uint8_t cmd_type = CATCH_SIGN;
   uint8_t cube_state = 0x00;
   uint8_t cube_type = 0x00;
   uint8_t E_flag = 'E';
@@ -47,7 +61,7 @@ struct RoboCatchCmdUartBuff {
 // cube_type: 0x01 - 0x05
 struct RoboCubeStateUartBuff {
   uint8_t S_flag = 'S';
-  uint8_t cmd_type = 0x04;
+  uint8_t cmd_type = RETURN_CUBE_STATE;
   uint8_t cube_status = 0x00;
   uint8_t cube_type = 0x00;
   uint8_t E_flag = 'E';
