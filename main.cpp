@@ -69,6 +69,16 @@ void topCameraThread(RoboInf &robo_inf,
     src_img = frame_to_mat(color_frame);
     auto res = detect_cube_top->Detect(src_img);
 
+    for (long unsigned int i = 0; i < res.size(); i++)
+      cv::rectangle(src_img, get_rect(src_img, res[i].bbox),
+                    cv::Scalar(0, 255, 0), 2);
+    cv::line(src_img, cv::Point(src_img.cols / 3, 0),
+              cv::Point(src_img.cols / 3, src_img.rows),
+              cv::Scalar(0, 150, 255), 2);
+    cv::line(src_img, cv::Point(src_img.cols / 3 * 2, 0),
+              cv::Point(src_img.cols / 3 * 2, src_img.rows),
+              cv::Scalar(0, 150, 255), 2);
+
     //选择检测方框在视野中最下位置的块
     if (rectFilter(res, src_img, object_2d_rect, yolo_res_selected_id)) {
       switch (robo_inf.catch_cube_mode_status.load())
