@@ -143,13 +143,13 @@ void topCameraThread(RoboInf &robo_inf,
         //To-do: 取多次识别的结果发送
         if ((int)res[yolo_res_selected_id].class_id == 0 ||
             (int)res[yolo_res_selected_id].class_id == 3) {
-          uart_temp_struct2.cube_state = 0x01;
+          uart_temp_struct2.cube_state = CUBE_UP;
         } else if ((int)res[yolo_res_selected_id].class_id == 1 ||
                     (int)res[yolo_res_selected_id].class_id == 4) {
-          uart_temp_struct2.cube_state = 0x02;
+          uart_temp_struct2.cube_state = CUBE_DOWN;
         } else if ((int)res[yolo_res_selected_id].class_id == 2 ||
                     (int)res[yolo_res_selected_id].class_id == 5) {
-          uart_temp_struct2.cube_state = 0x03;
+          uart_temp_struct2.cube_state = CUBE_STAND;
         }
 
         for (int i = 0; i < 3; i++)
