@@ -31,7 +31,7 @@ void topCameraThread(RoboInf &robo_inf,
   rs2::align align_to(RS2_STREAM_COLOR);
 
   auto detect_cube_top = std::make_shared<YOLOv5TRT>(
-      fmt::format("{}{}", SOURCE_PATH, "/models/Cube_side.engine"));
+      fmt::format("{}{}", SOURCE_PATH, "/models/cube_top.engine"));
 
   auto pnp = std::make_shared<solvepnp::PnP>(
       fmt::format("{}{}", CONFIG_FILE_PATH, "/d435i.xml"),
