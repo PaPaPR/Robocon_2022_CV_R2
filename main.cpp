@@ -50,19 +50,6 @@ void topCameraThread(RoboInf &robo_inf,
   while (cv::waitKey(1) != 'q') try {
     static int cube_middle_detect_times{0};
     static int cude_front_detect_times{0};
-    if (robo_inf.auto_catch_cube_mode.load()) {
-      if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
-        robo_inf.catch_cube_mode_status.store(CatchMode::spin);}
-    } else if (robo_inf.detect_cube_mode.load()) {
-      if (robo_inf.catch_cube_mode_status.load() == CatchMode::wait) {
-        robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);}
-    } else if (!robo_inf.auto_catch_cube_mode.load() &&
-               !robo_inf.detect_cube_mode.load()) {
-      robo_inf.catch_cube_mode_status.store(CatchMode::wait);
-      cube_middle_detect_times = 0;
-      cude_front_detect_times = 0;
-      continue;
-    }
 
     auto frames = pipe.wait_for_frames();
     auto depth_frame = frames.get_depth_frame();
@@ -171,6 +158,11 @@ void topCameraThread(RoboInf &robo_inf,
         robo_inf.catch_cube_mode_status.store(CatchMode::wait);
         break;
       }
+
+      case CatchMode::wait:
+        cube_middle_detect_times = 0;
+        cude_front_detect_times = 0;
+        break;
 
       default:
         break;

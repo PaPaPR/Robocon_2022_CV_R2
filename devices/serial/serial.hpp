@@ -27,9 +27,13 @@ class RoboSerial : public serial::Serial {
     while (uart_S_flag != 'S')
       this->read(&uart_S_flag, 1);
     this->read((uint8_t *)&uart_buff_struct, sizeof(uart_buff_struct));
-    robo_inf.auto_catch_cube_mode.store(uart_buff_struct.auto_catch_cube_mode);
-    robo_inf.manual_catch_cube_mode.store(uart_buff_struct.manual_catch_cube_mode);
-    robo_inf.detect_cube_mode.store(uart_buff_struct.detect_cube_mode);
+    if (uart_buff_struct.mode == NOTHING) {
+      robo_inf.catch_cube_mode_status.store(CatchMode::wait);
+    } else if (uart_buff_struct.mode == AUTO_MODE) {
+      robo_inf.catch_cube_mode_status.store(CatchMode::spin);
+    } else if (uart_buff_struct.mode == MANUAL_MODE) {
+      robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
+    }
   }
 
  private:
