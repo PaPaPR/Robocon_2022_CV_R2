@@ -44,6 +44,8 @@ void topCameraThread(RoboInf &robo_inf,
   cv::Point3f pnp_coordinate_mm;
   float pnp_depth;
   int yolo_res_selected_id;
+  cv::namedWindow("interface");
+  cv::moveWindow("interface", 75, 30);
 
   while (cv::waitKey(1) != 'q') try {
     static int cube_middle_detect_times{0};
@@ -94,9 +96,6 @@ void topCameraThread(RoboInf &robo_inf,
             RoboSpinCmdUartBuff uart_temp_struct;
             uart_temp_struct.yaw_angle = pnp_angle.y;
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
-            cv::putText(src_img, "spin angle:" + std::to_string(uart_temp_struct.yaw_angle),
-                        cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
-                        cv::Scalar(0, 150, 255), 1);
           }
         } else {
           RoboSpinCmdUartBuff uart_temp_struct;
@@ -178,16 +177,6 @@ void topCameraThread(RoboInf &robo_inf,
       }
 
 #ifndef RELEASE
-      for (long unsigned int i = 0; i < res.size(); i++)
-        cv::rectangle(src_img, get_rect(src_img, res[i].bbox),
-                      cv::Scalar(0, 255, 0), 2);
-      cv::line(src_img, cv::Point(src_img.cols / 3, 0),
-                cv::Point(src_img.cols / 3, src_img.rows),
-                cv::Scalar(0, 150, 255), 2);
-      cv::line(src_img, cv::Point(src_img.cols / 3 * 2, 0),
-                cv::Point(src_img.cols / 3 * 2, src_img.rows),
-                cv::Scalar(0, 150, 255), 2);
-
       cv::rectangle(src_img, object_2d_rect, cv::Scalar(0, 150, 255), 2);
       // 0-blue_yellow, 1-blue_white, 2-blue_blue, 3-red_yellow, 4-red_white,
       // 5-red_red
@@ -198,8 +187,6 @@ void topCameraThread(RoboInf &robo_inf,
 #endif
     }
 #ifndef RELEASE
-      cv::namedWindow("interface");
-      cv::moveWindow("interface", 0, 0);
       if (!src_img.empty()) cv::imshow("interface", src_img);
 #endif
       if (cv::waitKey(1) == 'q') break;
