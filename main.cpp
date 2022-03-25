@@ -51,6 +51,12 @@ void topCameraThread(RoboInf &robo_inf,
   constexpr float cube_target_distance_errors_range = 0.5f;
   constexpr int cube_targeted_detect_flag_times = 10;
   constexpr int cube_target_echo_uart_cmd_sleep_time = 20000;
+  constexpr int cube_2_min_area = 45000;
+  constexpr int cube_2_max_area = 55000;
+  constexpr int cube_3_min_area = 75000;
+  constexpr int cube_3_max_area = 90000;
+  constexpr int cube_4_min_area = 95000;
+  constexpr int cube_4_max_area = 115000;
 
   cv::namedWindow("interface");
   cv::moveWindow("interface", 75, 30);
@@ -155,7 +161,21 @@ void topCameraThread(RoboInf &robo_inf,
           uart_temp_catch_cmd.cube_state = CUBE_DOWN;
         } else if ((int)res[yolo_res_selected_id].class_id == 2 ||
                     (int)res[yolo_res_selected_id].class_id == 5) {
-          uart_temp_struct2.cube_state = CUBE_STAND;
+          uart_temp_catch_cmd.cube_state = CUBE_STAND;
+        }
+        // 根据方框面积判断积木大小
+        if (object_2d_rect.area() > cube_2_min_area &&
+            object_2d_rect.area() < cube_2_max_area) {
+          uart_temp_catch_cmd.cube_type = CUBE_2;
+        } else if (object_2d_rect.area() > cube_3_min_area &&
+                   object_2d_rect.area() < cube_3_max_area) {
+          uart_temp_catch_cmd.cube_type = CUBE_3;
+        } else if (object_2d_rect.area() > cube_4_min_area &&
+                   object_2d_rect.area() < cube_4_max_area) {
+          uart_temp_catch_cmd.cube_type = CUBE_4;
+        }
+        if (uart_temp_catch_cmd.cube_state == CUBE_STAND) {
+          uart_temp_catch_cmd.cube_type = CUBE_UNCERTAIN;
         }
 
         for (int i = 0; i < 3; i++) {
