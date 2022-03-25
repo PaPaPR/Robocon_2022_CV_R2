@@ -44,6 +44,14 @@ void topCameraThread(RoboInf &robo_inf,
   cv::Point3f pnp_coordinate_mm;
   float pnp_depth;
   int yolo_res_selected_id;
+
+  constexpr float cube_target_yaw_angle_offset = -2.f;
+  constexpr float cube_target_distance_offset = 13.5f;
+  constexpr float cube_target_yaw_angle_errors_range = 0.5f;
+  constexpr float cube_target_distance_errors_range = 0.5f;
+  constexpr int cube_targeted_detect_flag_times = 10;
+  constexpr int cube_target_echo_uart_cmd_sleep_time = 20000;
+
   cv::namedWindow("interface");
   cv::moveWindow("interface", 75, 30);
 
@@ -75,9 +83,11 @@ void topCameraThread(RoboInf &robo_inf,
       case CatchMode::spin: {
         pnp->solvePnP(object_3d_rect, object_2d_rect, pnp_angle,
                       pnp_coordinate_mm, pnp_depth);
+        pnp_angle.y += cube_target_yaw_angle_offset;
 
-        if (cube_middle_detect_times < 10) {
-          if (pnp_angle.y < 1.5f && pnp_angle.y > -1.5f) {
+        if (cube_middle_detect_times < cube_targeted_detect_flag_times) {
+          if (pnp_angle.y < cube_target_yaw_angle_errors_range &&
+              pnp_angle.y > -cube_target_yaw_angle_errors_range) {
             cube_middle_detect_times++;
           } else {
             RoboSpinCmdUartBuff uart_temp_struct;
@@ -91,7 +101,7 @@ void topCameraThread(RoboInf &robo_inf,
           for (int i = 0; i < 3; i++) {
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
             std::cout << "send yaw 0\n";
-            usleep(20000);
+            usleep(cube_target_echo_uart_cmd_sleep_time);
           }
 
           cube_middle_detect_times = 0;
@@ -102,9 +112,15 @@ void topCameraThread(RoboInf &robo_inf,
 
       case CatchMode::go: {
         // 通过方框在图像中位置判断
-        if (cude_front_detect_times < 10) {
-          float select_cube_dis = object_2d_rect.y + object_2d_rect.height - src_img.rows * 0.9;
-          if (select_cube_dis < 10.f || select_cube_dis > -10.f) {
+        if (cude_front_detect_times < cube_targeted_detect_flag_times) {
+          cv::Rect object_rect(object_2d_rect.x + object_2d_rect.width / 2 - 50,
+                               object_2d_rect.y + object_2d_rect.height - 100,
+                               100, 100); // 底部与目标重叠且居中，固定大小的 rect 用以 pnp
+          pnp->solvePnP(object_3d_rect, object_rect, pnp_angle,
+                        pnp_coordinate_mm, pnp_depth);
+          float select_cube_dis = cube_target_distance_offset - pnp_angle.x;
+          if (select_cube_dis < cube_target_distance_errors_range &&
+              select_cube_dis > -cube_target_distance_errors_range) {
             cude_front_detect_times++;
           } else {
             RoboGoCmdUartBuff uart_temp_struct;
@@ -118,7 +134,7 @@ void topCameraThread(RoboInf &robo_inf,
           for (int i = 0; i < 3; i++) {
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
             std::cout << "send stop \n";
-            usleep(20000);
+            usleep(cube_target_echo_uart_cmd_sleep_time);
           }
 
           robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
@@ -146,7 +162,7 @@ void topCameraThread(RoboInf &robo_inf,
           std::cout << "catch, rect size:" << object_2d_rect.area() << "rect type:"
                     << (int)uart_temp_struct2.cube_type << "rect state:" 
                     << (int)uart_temp_struct2.cube_state << "\n";
-          usleep(20000);
+          usleep(cube_target_echo_uart_cmd_sleep_time);
         }
 
         robo_inf.catch_cube_mode_status.store(CatchMode::off);
