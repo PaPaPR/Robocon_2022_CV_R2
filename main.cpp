@@ -181,62 +181,6 @@ void topCameraThread(RoboInf &robo_inf,
     }
 }
 
-void sideCameraThread(RoboInf &robo_inf,
-    const std::shared_ptr<RoboSerial> &serial,
-    const std::shared_ptr<nadjieb::MJPEGStreamer> &streamer_ptr) {
-  int camera_exposure = 5000;
-  mindvision::CameraParam camera_params(0, mindvision::RESOLUTION_1280_X_1024,
-                                        camera_exposure);
-  auto mv_capture = std::make_shared<mindvision::VideoCapture>(camera_params);
-
-  auto detect_cube_side = std::make_shared<YOLOv5TRT>(
-      fmt::format("{}{}", SOURCE_PATH, "/models/Cube_side.engine"));
-
-  cv::Mat src_img;
-  cv::Rect object_2d_rect;
-  int yolo_res_selected_id;
-
-  while (true) try {
-      if (mv_capture->isindustryimgInput() &&
-          robo_inf.detect_cube_mode.load()) {
-        mv_capture->cameraReleasebuff();
-        src_img = mv_capture->image();
-
-        auto res = detect_cube_side->Detect(src_img);
-
-        if (sideRectFilter(res, src_img, object_2d_rect,
-                           yolo_res_selected_id)) {
-          //To-do: 拍摄侧边摄像头，块立着被夹子夹住的数据集
-          if ((int)res[yolo_res_selected_id].class_id) {
-            /* code */
-          }
-        }
-        
-
-#ifndef RELEASE
-      for (long unsigned int i = 0; i < res.size(); i++)
-        cv::rectangle(src_img, get_rect(src_img, res[i].bbox),
-                      cv::Scalar(0, 255, 0), 2);
-      cv::rectangle(src_img, object_2d_rect, cv::Scalar(0, 150, 255), 2);
-      // 0-blue_yellow, 1-blue_white, 2-blue_blue, 3-red_yellow, 4-red_white,
-      // 5-red_red
-      cv::putText(src_img,
-                  std::to_string((int)res[yolo_res_selected_id].class_id),
-                  cv::Point(object_2d_rect.x, object_2d_rect.y - 1),
-                  cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 150, 255), 1);
-
-      std::vector<uchar> buff_side_camera;
-      cv::imencode(".jpg", src_img, buff_side_camera);
-      streamer_ptr->publish("/sidecamera",
-                            std::string(buff_side_camera.begin(),
-                            buff_side_camera.end()));
-#endif
-      }
-    } catch (const std::exception &e) {
-    fmt::print("{}\n", e.what());
-  }
-}
-
 void uartReadThread(const std::shared_ptr<RoboSerial> &serial,
                     RoboInf &robo_inf) {
   while (true) try {
@@ -347,15 +291,9 @@ int main(int argc, char *argv[]) {
   std::thread kb_thread(KeyboardThread, std::ref(kb), std::ref(robo_inf));
   kb_thread.detach();
 
-  std::thread side_camera_thread(sideCameraThread, std::ref(robo_cmd),
-                                 std::ref(robo_inf), std::ref(serial),
-                                 std::ref(streamer_ptr));
-  side_camera_thread.detach();
-
   if (std::cin.get() == 'q') {
     top_camera_thread.~thread();
     uart_thread.~thread();
-    side_camera_thread.~thread();
     kb_thread.~thread();
   }
 
