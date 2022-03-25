@@ -252,14 +252,14 @@ void KeyboardThread(std::unique_ptr<CatchKeyboard> &kb, RoboInf &robo_inf) {
     if (kb->GetEvent(code)) {
       switch (code)
       {
-      case 79:
-        robo_inf.mode.store(AUTO_MODE);
+      case KEY_KP1:
+        robo_inf.catch_cube_mode_status.store(CatchMode::spin);
         break;
-      case 80:
-        robo_inf.mode.store(MANUAL_MODE);
+      case KEY_KP2:
+        robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
         break;
-      case 81:
-        robo_inf.mode.store(NOTHING);
+      case KEY_KP3:
+        robo_inf.catch_cube_mode_status.store(CatchMode::off);
         break;
       
       default:
