@@ -28,11 +28,14 @@ class RoboSerial : public serial::Serial {
       this->read(&uart_S_flag, 1);
     this->read((uint8_t *)&uart_buff_struct, sizeof(uart_buff_struct));
     if (uart_buff_struct.mode == NOTHING) {
-      robo_inf.catch_cube_mode_status.store(CatchMode::wait);
+      if (robo_inf.catch_cube_mode_status.load() != CatchMode::off)
+        robo_inf.catch_cube_mode_status.store(CatchMode::off);
     } else if (uart_buff_struct.mode == AUTO_MODE) {
-      robo_inf.catch_cube_mode_status.store(CatchMode::spin);
+      if (robo_inf.catch_cube_mode_status.load() == CatchMode::off)
+        robo_inf.catch_cube_mode_status.store(CatchMode::spin);
     } else if (uart_buff_struct.mode == MANUAL_MODE) {
-      robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
+      if (robo_inf.catch_cube_mode_status.load() == CatchMode::off)
+        robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
     }
   }
 

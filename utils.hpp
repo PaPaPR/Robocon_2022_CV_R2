@@ -22,7 +22,7 @@
 #define RETURN_CUBE_STATE 0X04
 
 enum CatchMode {
-  wait = 0,
+  off = 0,
   spin,
   go,
   catch_cube
@@ -30,7 +30,7 @@ enum CatchMode {
 
 struct RoboInf {
   std::atomic<uint8_t> mode {0x00};
-  std::atomic<CatchMode> catch_cube_mode_status {CatchMode::wait};
+  std::atomic<CatchMode> catch_cube_mode_status {CatchMode::off};
 };
 
 // send R2 spin command

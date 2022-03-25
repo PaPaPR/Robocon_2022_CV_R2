@@ -149,11 +149,11 @@ void topCameraThread(RoboInf &robo_inf,
           usleep(20000);
         }
 
-        robo_inf.catch_cube_mode_status.store(CatchMode::wait);
+        robo_inf.catch_cube_mode_status.store(CatchMode::off);
         break;
       }
 
-      case CatchMode::wait:
+      case CatchMode::off:
         cube_middle_detect_times = 0;
         cude_front_detect_times = 0;
         break;
