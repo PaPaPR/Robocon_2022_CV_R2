@@ -101,24 +101,6 @@ void topCameraThread(RoboInf &robo_inf,
       }
 
       case CatchMode::go: {
-        // 使用深度相机测距进行距离判断
-        // cv::Mat depth_frame_Mat = depth_frame_to_meters(depth_frame);
-        // cv::Mat depth_frame_Mat_mean_mask;
-        // cv::Rect object_2d_measure_depth_rect(object_2d_rect.x + object_2d_rect.width / 3,
-        //                                       object_2d_rect.y + object_2d_rect.width * 0.1,
-        //                                       object_2d_rect.width / 3,
-        //                                       30);
-        //去除距离为 0 的点
-        // cv::Mat object_2d_measure_depth_rect_roi = depth_frame_Mat(object_2d_measure_depth_rect);
-        // cv::inRange(object_2d_measure_depth_rect_roi, 0.01f, 2.f, depth_frame_Mat_mean_mask);
-        // cv::rectangle(src_img, object_2d_measure_depth_rect, cv::Scalar(0, 255, 0));
-        // cv::Scalar object_2d_measure_depth_rect_avg_dist = cv::mean(object_2d_measure_depth_rect_roi,
-        //                                                             depth_frame_Mat_mean_mask);
-
-        // cv::putText(src_img, std::to_string(object_2d_measure_depth_rect_avg_dist[0]),
-        //             cv::Point(0, 100), cv::FONT_HERSHEY_DUPLEX, 1,
-        //             cv::Scalar(0, 150, 255), 1);
-
         // 通过方框在图像中位置判断
         if (cude_front_detect_times < 10) {
           float select_cube_dis = object_2d_rect.y + object_2d_rect.height - src_img.rows * 0.9;
