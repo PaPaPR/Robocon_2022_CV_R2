@@ -82,13 +82,17 @@ void topCameraThread(RoboInf &robo_inf,
           } else {
             RoboSpinCmdUartBuff uart_temp_struct;
             uart_temp_struct.yaw_angle = pnp_angle.y;
+            std::cout << "uart_temp_struct.yaw_angle" << uart_temp_struct.yaw_angle << "\n";
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
           }
         } else {
           RoboSpinCmdUartBuff uart_temp_struct;
           uart_temp_struct.yaw_angle = 0.f;
-          for (int i = 0; i < 3; i++)
+          for (int i = 0; i < 3; i++) {
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+            std::cout << "send yaw 0\n";
+            usleep(20000);
+          }
 
           cube_middle_detect_times = 0;
           robo_inf.catch_cube_mode_status.store(CatchMode::go);
@@ -123,13 +127,17 @@ void topCameraThread(RoboInf &robo_inf,
           } else {
             RoboGoCmdUartBuff uart_temp_struct;
             uart_temp_struct.distance = select_cube_dis;
+            std::cout << "uart_temp_struct.distance:" << uart_temp_struct.distance << "\n";
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
           }
         } else {
           RoboGoCmdUartBuff uart_temp_struct;
           uart_temp_struct.distance = 0.f;
-          for (int i = 0; i < 3; i++)
+          for (int i = 0; i < 3; i++) {
             serial->write((uint8_t *)&uart_temp_struct, sizeof(uart_temp_struct));
+            std::cout << "send stop \n";
+            usleep(20000);
+          }
 
           robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
           cude_front_detect_times = 0;
@@ -151,9 +159,13 @@ void topCameraThread(RoboInf &robo_inf,
           uart_temp_struct2.cube_state = CUBE_STAND;
         }
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 3; i++) {
           serial->write((uint8_t *)&uart_temp_struct2, sizeof(uart_temp_struct2));
-        fmt::print("catch sign send.\n");
+          std::cout << "catch, rect size:" << object_2d_rect.area() << "rect type:"
+                    << (int)uart_temp_struct2.cube_type << "rect state:" 
+                    << (int)uart_temp_struct2.cube_state << "\n";
+          usleep(20000);
+        }
 
         robo_inf.catch_cube_mode_status.store(CatchMode::wait);
         break;
