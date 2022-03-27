@@ -62,7 +62,8 @@ void topCameraThread(RoboInf &robo_inf,
   cv::namedWindow("interface");
   cv::moveWindow("interface", 75, 30);
 
-  while (cv::waitKey(1) != 'q') try {
+  while (true) try {
+    usleep(1);
     static int cube_middle_detect_times{0};
     static int cude_front_detect_times{0};
 
