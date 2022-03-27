@@ -304,7 +304,7 @@ int main(int argc, char *argv[]) {
   uart_thread.detach();
 
   std::thread top_camera_thread(topCameraThread, std::ref(robo_inf),
-                                std::ref(serial));
+                                std::ref(serial), std::ref(streamer_ptr));
   top_camera_thread.detach();
 
   std::thread kb_thread(KeyboardThread, std::ref(kb), std::ref(robo_inf));
