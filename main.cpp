@@ -22,7 +22,8 @@
 using namespace std::chrono_literals;
 
 void topCameraThread(RoboInf &robo_inf,
-    const std::shared_ptr<RoboSerial> &serial) {
+    const std::shared_ptr<RoboSerial> &serial,
+    const std::shared_ptr<nadjieb::MJPEGStreamer> &streamer_ptr) {
   rs2::pipeline pipe;
   rs2::config cfg;
   cfg.enable_stream(RS2_STREAM_COLOR, 1280, 720, RS2_FORMAT_BGR8, 30.f);
@@ -222,6 +223,13 @@ void topCameraThread(RoboInf &robo_inf,
 #endif
     }
 #ifndef RELEASE
+      if (!src_img.empty()) {
+        std::vector<uchar> buff_bgr;
+        cv::imencode(".jpg", src_img, buff_bgr);
+        streamer_ptr->publish("/tpcm",
+                              std::string(buff_bgr.begin(), buff_bgr.end()));
+      }
+      cv::resize(src_img, src_img, cv::Size(1800, 900));
       if (!src_img.empty()) cv::imshow("interface", src_img);
 #endif
       if (cv::waitKey(1) == 'q') break;
