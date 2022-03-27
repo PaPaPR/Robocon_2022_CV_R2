@@ -1,11 +1,17 @@
 #pragma once
 #include <atomic>
 
+#define AUTO_MODE 0x01
+#define MANUAL_MODE 0x02
+#define DETECT_MODE 0x03
+#define NOTHING 0x04
+
 #define CUBE_1 0x01 // cube_1(biggest)
 #define CUBE_2 0x02
 #define CUBE_3 0x03
 #define CUBE_4 0x04
 #define CUBE_5 0x05
+#define CUBE_UNCERTAIN 0X06
 #define CUBE_UP    0x01
 #define CUBE_DOWN  0x02
 #define CUBE_STAND 0x03
@@ -16,17 +22,15 @@
 #define RETURN_CUBE_STATE 0X04
 
 enum CatchMode {
-  wait = 0,
+  off = 0,
   spin,
   go,
   catch_cube
 };
 
 struct RoboInf {
-  std::atomic<bool> auto_catch_cube_mode {false}; // 自动模式（自动对位并进行识别）
-  std::atomic<bool> manual_catch_cube_mode {false}; // 手动模式（没有自动对位）
-  std::atomic<bool> detect_cube_mode {false}; // 识别立起积木模式（仅进行积木状态识别）
-  std::atomic<CatchMode> catch_cube_mode_status {CatchMode::wait};
+  std::atomic<uint8_t> mode {0x00};
+  std::atomic<CatchMode> catch_cube_mode_status {CatchMode::off};
 };
 
 // send R2 spin command
@@ -69,31 +73,31 @@ struct RoboCubeStateUartBuff {
 
 //uart recive
 struct RoboInfUartBuff {
-  bool auto_catch_cube_mode {false};
-  bool manual_catch_cube_mode {false};
-  bool detect_cube_mode {false};
+  uint8_t mode = NOTHING;
 } __attribute__((packed));
 
 //选择在图像 x 轴 1/3 - 2/3 范围中，距离夹子最近的积木
 bool rectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
                 cv::Rect &rect, int &select_id) {
-  std::vector<Yolo::Detection> middle_res;
+  std::vector<int> middle_res_no;
+  cv::Rect rc;
   for (size_t i = 0; i < res.size(); i++) {
-    if (res[i].bbox[1] > img.cols * 0.3 && res[i].bbox[1] < img.cols * 0.6) {
-      middle_res.emplace_back(res[i]);
+    rc = get_rect(img, res[i].bbox);
+    if ((rc.x + rc.width / 2) > (img.cols / 3) && (rc.x + rc.width / 2) < (img.cols / 3 * 2)) {
+      middle_res_no.emplace_back(i);
     }
   }
   
   float max_y_axis = .0;
   select_id = -1;
-  for (size_t i = 0; i < middle_res.size(); i++) {
-    if (middle_res[i].bbox[1] > max_y_axis) {
-      max_y_axis = middle_res[i].bbox[1];
-      select_id = i;
+  for (size_t i = 0; i < middle_res_no.size(); i++) {
+    if (res[middle_res_no[i]].bbox[1] > max_y_axis) {
+      max_y_axis = res[middle_res_no[i]].bbox[1];
+      select_id = middle_res_no[i];
     }
   }
   if (select_id != -1) {
-    rect = get_rect(img, middle_res[select_id].bbox);
+    rect = get_rect(img, res[select_id].bbox);
     return true;
   } else {
     return false;
