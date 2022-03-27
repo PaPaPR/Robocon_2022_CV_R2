@@ -87,6 +87,10 @@ void topCameraThread(RoboInf &robo_inf,
       switch (robo_inf.catch_cube_mode_status.load())
       {
       case CatchMode::spin: {
+        cv::putText(src_img,
+                    "spin mode",
+                    cv::Point(50, 50),
+                    cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 150, 255), 1);
         pnp->solvePnP(object_3d_rect, object_2d_rect, pnp_angle,
                       pnp_coordinate_mm, pnp_depth);
         pnp_angle.y += cube_target_yaw_angle_offset;
@@ -117,6 +121,10 @@ void topCameraThread(RoboInf &robo_inf,
       }
 
       case CatchMode::go: {
+        cv::putText(src_img,
+                    "go straight mode",
+                    cv::Point(50, 50),
+                    cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 150, 255), 1);
         // 通过方框在图像中位置判断
         if (cude_front_detect_times < cube_targeted_detect_flag_times) {
           cv::Rect object_rect(object_2d_rect.x + object_2d_rect.width / 2 - 50,
@@ -150,6 +158,10 @@ void topCameraThread(RoboInf &robo_inf,
       }
 
       case CatchMode::catch_cube: {
+        cv::putText(src_img,
+                    "catch cube mode",
+                    cv::Point(50, 50),
+                    cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 150, 255), 1);
         RoboCatchCmdUartBuff uart_temp_catch_cmd;
         // 发送积木状态
         //To-do: 取多次识别的结果发送
