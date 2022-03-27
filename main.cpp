@@ -191,13 +191,15 @@ void topCameraThread(RoboInf &robo_inf,
         if (uart_temp_catch_cmd.cube_state == CUBE_STAND) {
           uart_temp_catch_cmd.cube_type = CUBE_UNCERTAIN;
         }
-
-        for (int i = 0; i < 3; i++) {
-          serial->write((uint8_t *)&uart_temp_catch_cmd, sizeof(uart_temp_catch_cmd));
-          std::cout << "catch, rect size:" << object_2d_rect.area() << "rect type:"
-                    << (int)uart_temp_catch_cmd.cube_type << "rect state:" 
-                    << (int)uart_temp_catch_cmd.cube_state << "\n";
-          usleep(cube_target_echo_uart_cmd_sleep_time);
+        // 若判断积木大小结果正常则发送
+        if (uart_temp_catch_cmd.cube_type != 0x00) {
+          for (int i = 0; i < 3; i++) {
+            serial->write((uint8_t *)&uart_temp_catch_cmd, sizeof(uart_temp_catch_cmd));
+            std::cout << "catch, rect size:" << object_2d_rect.area() << "rect type:"
+                      << (int)uart_temp_catch_cmd.cube_type << "rect state:" 
+                      << (int)uart_temp_catch_cmd.cube_state << "\n";
+            usleep(cube_target_echo_uart_cmd_sleep_time);
+          }
         }
 
         robo_inf.catch_cube_mode_status.store(CatchMode::off);
