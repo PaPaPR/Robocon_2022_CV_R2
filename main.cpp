@@ -244,9 +244,14 @@ void topCameraThread(RoboInf &robo_inf,
 void uartReadThread(const std::shared_ptr<RoboSerial> &serial,
                     RoboInf &robo_inf) {
   while (true) try {
-      serial->ReceiveInfo(robo_inf);
+      if(serial->isOpen()) {
+        serial->ReceiveInfo(robo_inf);
+      } else {
+        serial->open();
+      }
       std::this_thread::sleep_for(1ms);
     } catch (const std::exception &e) {
+      serial->close();
       static int serial_read_excepted_times{0};
       if (serial_read_excepted_times++ > 3) {
         std::this_thread::sleep_for(10000ms);
@@ -254,56 +259,10 @@ void uartReadThread(const std::shared_ptr<RoboSerial> &serial,
                    idntifier_red);
         serial_read_excepted_times = 0;
       }
-      fmt::print("[{}] serial exception: {} serial restarting...\n",
+      fmt::print("[{}] serial exception: {}\n",
                  idntifier_red, e.what());
       std::this_thread::sleep_for(1000ms);
     }
-}
-
-void uartThread(RoboInf &robo_inf, const std::shared_ptr<RoboSerial> &serial) {
-  std::thread uart_read_thread(uartReadThread, std::ref(serial),
-                               std::ref(robo_inf));
-  uart_read_thread.detach();
-
-  while (true) try {
-      serial->available();
-    } catch (const std::exception &e) {
-      static int change_serial_port_times{0};
-      if (change_serial_port_times++ > 3) {
-        fmt::print("[{}] Serial restarted to many times, sleep 10s...\n",
-                   idntifier_red);
-        std::this_thread::sleep_for(10000ms);
-        change_serial_port_times = 0;
-      }
-      fmt::print("[{}] exception: {} serial restarting...\n", idntifier_red,
-                 e.what());
-      std::string port = serial->getPort();
-      port.pop_back();
-      try {
-        serial->close();
-      } catch (...) {
-      }
-
-      for (int i = 0; i < 3; i++) {
-        fmt::print("[{}] try to change to {}{} port.\n", idntifier_red, port,
-                   i);
-        try {
-          serial->setPort(port + std::to_string(i));
-          serial->open();
-        } catch (const std::exception &e1) {
-          fmt::print("[{}] change {}{} serial failed.\n", idntifier_red, port,
-                     i);
-        }
-        if (serial->isOpen()) {
-          fmt::print("[{}] change to {}{} serial successed.\n", idntifier_green,
-                     port, i);
-          break;
-        }
-        std::this_thread::sleep_for(300ms);
-      }
-      if (serial->isOpen()) break;
-    }
-    std::this_thread::sleep_for(1000ms);
 }
 
 void KeyboardThread(std::unique_ptr<CatchKeyboard> &kb, RoboInf &robo_inf) {
@@ -337,11 +296,11 @@ int main(int argc, char *argv[]) {
   auto streamer_ptr = std::make_shared<nadjieb::MJPEGStreamer>();
   streamer_ptr->start(8080);
 
-  auto serial = std::make_shared<RoboSerial>("/dev/ttyUSB0", 115200);
+  auto serial = std::make_shared<RoboSerial>("/dev/ch340g", 115200);
 
   auto kb = std::make_unique<CatchKeyboard>("2.4G Wireless Keyboard");
 
-  std::thread uart_thread(uartThread, std::ref(robo_inf), std::ref(serial));
+  std::thread uart_thread(uartReadThread, std::ref(serial), std::ref(robo_inf));
   uart_thread.detach();
 
   std::thread top_camera_thread(topCameraThread, std::ref(robo_inf),
