@@ -36,6 +36,9 @@ class RoboSerial : public serial::Serial {
     } else if (uart_buff_struct.mode == MANUAL_MODE) {
       if (robo_inf.catch_cube_mode_status.load() == CatchMode::off)
         robo_inf.catch_cube_mode_status.store(CatchMode::catch_cube);
+    }else if (uart_buff_struct.mode == DETECT_MODE) {
+      // if (robo_inf.catch_cube_mode_status.load() == CatchMode::off)
+        robo_inf.catch_cube_mode_status.store(CatchMode::detect_mode);
     }
   }
 

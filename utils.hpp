@@ -25,7 +25,8 @@ enum CatchMode {
   off = 0,
   spin,
   go,
-  catch_cube
+  catch_cube,
+  detect_mode
 };
 
 struct RoboInf {
@@ -120,4 +121,13 @@ bool sideRectFilter(std::vector<Yolo::Detection> res, cv::Mat &img,
   } else {
     return false;
   }
+}
+
+
+void resetRect(cv::Rect & input_r)
+{
+  static float rate = 480.0 / 640.0;
+  input_r.height *= rate;
+  input_r.y *= rate;
+  // std::cout << "rate:" << rate << std::endl;
 }
