@@ -6,7 +6,6 @@ Detector::~Detector(){}
 string names2[] = {"blue_up","blue_down","blue_erect"
                 ,"red_up","red_down","red_erect"};
 
-
 //注意此处的阈值是框和物体prob乘积的阈值s
 bool Detector::parse_yolov5(const Blob::Ptr &blob,int net_grid,float cof_threshold,
     vector<Rect>& o_rect,vector<float>& o_rect_cof,vector<int>& label_input){
@@ -19,7 +18,7 @@ bool Detector::parse_yolov5(const Blob::Ptr &blob,int net_grid,float cof_thresho
     size_t anchor_n = 3;
     // omp_set_num_threads(2);
     #pragma omp parallel for
-    for(int n=0;n<anchor_n;++n)
+    for(size_t n = 0;n < anchor_n; ++n)
         for(int i=0;i<net_grid;++i)
             for(int j=0;j<net_grid;++j)
             {
@@ -79,7 +78,7 @@ bool Detector::init(string xml_path,double cof_threshold,double nms_area_thresho
     input->setPrecision(Precision::FP32);
     input->getInputData()->setLayout(Layout::NCHW);
     ICNNNetwork::InputShapes inputShapes = cnnNetwork.getInputShapes();
-    SizeVector& inSizeVector = inputShapes.begin()->second;
+    // SizeVector& inSizeVector = inputShapes.begin()->second;
     cnnNetwork.reshape(inputShapes);
     //输出设置
     _outputinfo = OutputsDataMap(cnnNetwork.getOutputsInfo());
@@ -87,7 +86,7 @@ bool Detector::init(string xml_path,double cof_threshold,double nms_area_thresho
         output.second->setPrecision(Precision::FP32);
     }
     //获取可执行网络
-    //_network =  ie.LoadNetwork(cnnNetwork, "GPU");
+    // _network =  ie.LoadNetwork(cnnNetwork, "GPU");
     _network =  ie.LoadNetwork(cnnNetwork, "CPU");
     return true;
 }
@@ -104,7 +103,7 @@ bool Detector::process_frame(Mat& inframe,vector<Object>& detected_objects){
         return false;
     }
     resize(inframe,inframe,Size(640,640));
-    // cvtColor(inframe,inframe,COLOR_BGR2RGB);
+    cvtColor(inframe,inframe,COLOR_BGR2RGB);
     size_t img_size = 640*640;
     InferRequest::Ptr infer_request = _network.CreateInferRequestPtr();
     Blob::Ptr frameBlob = infer_request->GetBlob(_input_name);
@@ -149,11 +148,14 @@ bool Detector::process_frame(Mat& inframe,vector<Object>& detected_objects){
             names2[label[final_id[i]]],
             resize_rect,
             label[final_id[i]],
-            std::abs(inframe.cols * 0.5  - resize_rect.y),
-            std::abs(inframe.rows * 0.5  - resize_rect.x),
-            std::pow(inframe.rows * 0.8 - resize_rect.y,2) + std::pow(inframe.cols * 0.5 - resize_rect.x,2)
+            static_cast<int>(std::abs(inframe.cols * 0.5  - resize_rect.y)),
+            static_cast<int>(std::abs(inframe.rows * 0.5  - resize_rect.x)),
+            static_cast<int>(std::pow(inframe.rows * 0.8 - resize_rect.y,2) +
+                             std::pow(inframe.cols * 0.5 - resize_rect.x,2))
         });
     }
+
+    cvtColor(inframe, inframe, COLOR_RGB2BGR);
     return true;
 }
 

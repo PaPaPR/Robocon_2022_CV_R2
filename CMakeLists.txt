@@ -47,35 +47,20 @@ target_link_libraries(Robocon_2022_CV_R2 serial)
 # evdev
 target_link_libraries(Robocon_2022_CV_R2 evdev)
 
-#TensorRTx
-find_package(CUDA REQUIRED)
+# OpenVino
+include_directories(
+    ~/intel/openvino_2021/deployment_tools/inference_engine/include/
+    ~/intel/openvino_2021/deployment_tools/ngraph/include/
+)
+set(InferenceEngine_DIR "~/intel/openvino_2021/deployment_tools/inference_engine/share")
+find_package(InferenceEngine)
 
-# include and link dirs of cuda and tensorrt, you need adapt them if yours are different
-# cuda
-include_directories(/usr/local/cuda/include)
-link_directories(/usr/local/cuda/lib64)
-# tensorrt
-include_directories(/usr/include/x86_64-linux-gnu/)
-link_directories(/usr/lib/x86_64-linux-gnu/)
-
-cuda_add_library(myplugins SHARED TensorRTx/yololayer.cu) # 生成动态库 myplugins
-# target_link_libraries(myplugins nvinfer cudart) # nvinfer cudart 是 TensorRT的库?
-target_link_libraries(myplugins nvinfer) # nvinfer cudart 是 TensorRT的库?
+add_library (OpenVINO_Detector OpenVINO/detector.cpp)
+target_link_libraries(Robocon_2022_CV_R2 OpenVINO_Detector ${InferenceEngine_LIBRARIES})
 
 #OpenCV
 find_package(OpenCV)
 include_directories(${OpenCV_INCLUDE_DIRS})
-
-# 生成/×可×执×行×文×件×/ 动态库√ TensorRTx, 基于calibrator.cpp preprocess.cu
-cuda_add_library(TensorRTx SHARED TensorRTx/calibrator.cpp TensorRTx/yolov5.hpp TensorRTx/preprocess.cu) 
-
-# 把nvinfer、cudart、myplugins 和 opencv库 -->(链接到) TensorRTx
-target_link_libraries(TensorRTx nvinfer)
-# target_link_libraries(TensorRTx cudart)
-target_link_libraries(TensorRTx myplugins)
-target_link_libraries(TensorRTx ${OpenCV_LIBS})
-
-target_link_libraries(Robocon_2022_CV_R2 TensorRTx)
 
 set(CONFIG_FILE_PATH ${PROJECT_SOURCE_DIR}/configs)
 set(SOURCE_PATH ${PROJECT_SOURCE_DIR})
