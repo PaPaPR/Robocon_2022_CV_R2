@@ -59,9 +59,6 @@ void topCameraThread(RoboInf &robo_inf,
   constexpr int cube_4_min_area = 95000;
   constexpr int cube_4_max_area = 115000;
 
-  cv::namedWindow("interface");
-  cv::moveWindow("interface", 75, 30);
-
   while (true) try {
     usleep(1);
     static int cube_middle_detect_times{0};
@@ -230,8 +227,6 @@ void topCameraThread(RoboInf &robo_inf,
                               std::string(buff_bgr.begin(), buff_bgr.end()));
       }
 #endif
-      cv::resize(src_img, src_img, cv::Size(1800, 900));
-      if (!src_img.empty()) cv::imshow("interface", src_img);
     } catch (const std::exception &e) {
       fmt::print("{}\n", e.what());
     }
