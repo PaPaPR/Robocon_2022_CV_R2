@@ -62,6 +62,17 @@ void countBegin(Record_counts &counts_)
 }
 int main()
 {
+ Record_counts counts_obj;
+ std::thread Videothreard(recordVideo,std::ref(counts_obj));
+ std::thread Countsthread(countBegin,std::ref(counts_obj));
+ if(Videothreard.joinable()){
+  Videothreard.detach();
+ }
+ if(Countsthread.joinable()){
+  Countsthread.detach();
+ }
+ if(cv::waitKey(0) == 'q') {
+  return 0;
+ }
 
- return 0;
 }

@@ -75,7 +75,7 @@ set(RECORD_IMG 1)
 if(${RECORD_IMG})
 set(PROJECTNAME_TEST IMGE_RECORD_RCR2)
 add_executable(${PROJECTNAME_TEST} 
-                ${PROJECT_SOURCE_DIR}/ImageAct/videRecord.cpp
+                ${PROJECT_SOURCE_DIR}/ImageAct/videoRecord.cpp
                 )       
 
 target_link_libraries(${PROJECTNAME_TEST}
