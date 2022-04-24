@@ -38,3 +38,8 @@ build
 *.engine
 *.pt
 *.onnx
+
+
+# Executable
+Robocon_2022_CV_R2
+IMGE_RECORD_RCR2
