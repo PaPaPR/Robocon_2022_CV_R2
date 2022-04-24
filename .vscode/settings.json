@@ -77,8 +77,5 @@
         "any": "cpp",
         "dense": "cpp",
         "__bit_reference": "cpp"
-    },
-    "cSpell.words": [
-        "Videothreard"
-    ]
+    }
 }
