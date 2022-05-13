@@ -7,6 +7,8 @@ option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O0 -g -Wfatal-errors -D_MWAITXINTRIN_H_INCLUDED -pthread")
 
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # add_definitions(-DRELEASE)
 
 add_executable(Robocon_2022_CV_R2 main.cpp)
@@ -26,11 +28,11 @@ find_package(fmt REQUIRED)
 target_link_libraries(Robocon_2022_CV_R2 fmt::fmt)
 
 #Camera
-add_library(MVSDK SHARED IMPORTED)
-add_library(Camera devices/camera/mv_video_capture.cpp)
-set(MIMDVISION_SDK_LIBRARY /lib/libMVSDK.so)
-set_property(TARGET MVSDK PROPERTY IMPORTED_LOCATION ${MIMDVISION_SDK_LIBRARY})
-target_link_libraries(Robocon_2022_CV_R2 Camera MVSDK)
+# add_library(MVSDK SHARED IMPORTED)
+# add_library(Camera devices/camera/mv_video_capture.cpp)
+# set(MIMDVISION_SDK_LIBRARY /lib/libMVSDK.so)
+# set_property(TARGET MVSDK PROPERTY IMPORTED_LOCATION ${MIMDVISION_SDK_LIBRARY})
+# target_link_libraries(Robocon_2022_CV_R2 Camera MVSDK)
 
 # new serial
 set(serial_SRCS
@@ -66,3 +68,20 @@ set(CONFIG_FILE_PATH ${PROJECT_SOURCE_DIR}/configs)
 set(SOURCE_PATH ${PROJECT_SOURCE_DIR})
 target_compile_definitions(Robocon_2022_CV_R2 PRIVATE "CONFIG_FILE_PATH=\"${CONFIG_FILE_PATH}\"")
 target_compile_definitions(Robocon_2022_CV_R2 PRIVATE "SOURCE_PATH=\"${PROJECT_SOURCE_DIR}\"")
+
+
+#Image Record
+set(RECORD_IMG 1)
+if(${RECORD_IMG})
+set(PROJECTNAME_TEST IMGE_RECORD_RCR2)
+add_executable(${PROJECTNAME_TEST} 
+                ${PROJECT_SOURCE_DIR}/ImageAct/videoRecord.cpp
+                )       
+
+target_link_libraries(${PROJECTNAME_TEST}
+                PRIVATE
+                ${OpenCV_LIBS}
+                ${realsense2_LIBRARY}
+                fmt::fmt
+                )
+endif()

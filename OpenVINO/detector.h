@@ -24,7 +24,7 @@ public:
         int dis_;
         bool operator < (const Object &y) const
         {
-            return dis_rows < y.dis_rows; 
+            return dis_cols < y.dis_cols; 
         }
     };
     Detector();

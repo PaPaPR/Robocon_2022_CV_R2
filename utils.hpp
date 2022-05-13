@@ -13,14 +13,17 @@
 #define CUBE_4 0x04
 #define CUBE_5 0x05
 #define CUBE_UNCERTAIN 0X06
-#define CUBE_UP    0x01
-#define CUBE_DOWN  0x02
+
+#define CUBE_LIE    0x01
+#define CUBE_ERECT  0x02
 #define CUBE_STAND 0x03
 
 #define SPIN_SIGN         0x01
 #define GO_SIGN           0X02
 #define CATCH_SIGN        0X03
 #define RETURN_CUBE_STATE 0X04
+
+#define WATTING 0x01
 
 enum CatchMode {
   off = 0,
@@ -58,7 +61,6 @@ struct RoboCatchCmdUartBuff {
   uint8_t S_flag = 'S';
   uint8_t cmd_type = CATCH_SIGN;
   uint8_t cube_state = 0x00;
-  uint8_t cube_type = 0x00;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 
@@ -69,7 +71,6 @@ struct RoboCubeStateUartBuff {
   uint8_t S_flag = 'S';
   uint8_t cmd_type = RETURN_CUBE_STATE;
   uint8_t cube_status = 0x00;
-  uint8_t cube_type = 0x00;
   uint8_t E_flag = 'E';
 } __attribute__((packed));
 
@@ -109,3 +110,15 @@ bool rectFilter(const std::vector<Detector::Object> &objs,
     return false;
   }
 }
+
+
+
+// serial change
+struct RobotRcNBuff {
+  uint8_t S_flag = 'S';
+  uint8_t cmd_type = WATTING;  // Grippers
+  uint8_t cube_status = 0x00;  // the type of the cube
+  float distance = 0.f;  // distance
+  float yaw = 0.f;  // yaw
+  uint8_t E_flag = 'E';
+} __attribute__((packed));
