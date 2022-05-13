@@ -28,11 +28,11 @@ find_package(fmt REQUIRED)
 target_link_libraries(Robocon_2022_CV_R2 fmt::fmt)
 
 #Camera
-add_library(MVSDK SHARED IMPORTED)
-add_library(Camera devices/camera/mv_video_capture.cpp)
-set(MIMDVISION_SDK_LIBRARY /lib/libMVSDK.so)
-set_property(TARGET MVSDK PROPERTY IMPORTED_LOCATION ${MIMDVISION_SDK_LIBRARY})
-target_link_libraries(Robocon_2022_CV_R2 Camera MVSDK)
+# add_library(MVSDK SHARED IMPORTED)
+# add_library(Camera devices/camera/mv_video_capture.cpp)
+# set(MIMDVISION_SDK_LIBRARY /lib/libMVSDK.so)
+# set_property(TARGET MVSDK PROPERTY IMPORTED_LOCATION ${MIMDVISION_SDK_LIBRARY})
+# target_link_libraries(Robocon_2022_CV_R2 Camera MVSDK)
 
 # new serial
 set(serial_SRCS

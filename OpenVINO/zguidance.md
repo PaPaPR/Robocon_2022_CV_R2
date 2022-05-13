@@ -61,3 +61,22 @@ detected_objects[i].status
 3-red_yellow<br>
 4-red_white<br>
 5-red_red<br>
+
+
+## code change place 
+in the line 127 to 138 (detector.cpp)
+Means to adjust the convert of the fourth reasonings in YoloV5-Openvino model
+```
+    static int _i_out = 0;
+    int s[4] = {80,40,20,0};
+    int i=0;
+    for (auto &output : _outputinfo) {
+        auto output_name = output.first;
+        Blob::Ptr blob = infer_request->GetBlob(output_name);
+        if(++_i_out == 4) {
+            continue;
+        }
+        parse_yolov5(blob,s[i],_cof_threshold,origin_rect,origin_rect_cof,label);
+        ++i;
+    }
+```
