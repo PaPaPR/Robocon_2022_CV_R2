@@ -3,9 +3,7 @@
 Detector::Detector(){}
 
 Detector::~Detector(){}
-string names2[] = {"blue_up","blue_down","blue_erect"
-                ,"red_up","red_down","red_erect"};
-
+string names2[] = {"lie","erect"};
 
 //注意此处的阈值是框和物体prob乘积的阈值s
 bool Detector::parse_yolov5(const Blob::Ptr &blob,int net_grid,float cof_threshold,
@@ -15,11 +13,11 @@ bool Detector::parse_yolov5(const Blob::Ptr &blob,int net_grid,float cof_thresho
    const float *output_blob = blobMapped.as<float *>();
    //80个类是85,一个类是6,n个类是n+5
    //int item_size = 6;
-   int item_size = 11;
+   int item_size = 7;
     size_t anchor_n = 3;
     // omp_set_num_threads(2);
     #pragma omp parallel for
-    for(int n=0;n<anchor_n;++n)
+    for(size_t n = 0;n < anchor_n; ++n)
         for(int i=0;i<net_grid;++i)
             for(int j=0;j<net_grid;++j)
             {
@@ -36,7 +34,7 @@ bool Detector::parse_yolov5(const Blob::Ptr &blob,int net_grid,float cof_thresho
                
                 double max_prob = 0;
                 int idx=0;
-                for(int t=5;t<11;++t){
+                for(int t=5;t<7;++t){
                     double tp= output_blob[n*net_grid*net_grid*item_size + i*net_grid*item_size + j *item_size+ t];
                     tp = sigmoid(tp);
                     if(tp > max_prob){
@@ -79,7 +77,7 @@ bool Detector::init(string xml_path,double cof_threshold,double nms_area_thresho
     input->setPrecision(Precision::FP32);
     input->getInputData()->setLayout(Layout::NCHW);
     ICNNNetwork::InputShapes inputShapes = cnnNetwork.getInputShapes();
-    SizeVector& inSizeVector = inputShapes.begin()->second;
+    // SizeVector& inSizeVector = inputShapes.begin()->second;
     cnnNetwork.reshape(inputShapes);
     //输出设置
     _outputinfo = OutputsDataMap(cnnNetwork.getOutputsInfo());
@@ -87,7 +85,7 @@ bool Detector::init(string xml_path,double cof_threshold,double nms_area_thresho
         output.second->setPrecision(Precision::FP32);
     }
     //获取可执行网络
-    //_network =  ie.LoadNetwork(cnnNetwork, "GPU");
+    // _network =  ie.LoadNetwork(cnnNetwork, "GPU");
     _network =  ie.LoadNetwork(cnnNetwork, "CPU");
     return true;
 }
@@ -104,7 +102,7 @@ bool Detector::process_frame(Mat& inframe,vector<Object>& detected_objects){
         return false;
     }
     resize(inframe,inframe,Size(640,640));
-    // cvtColor(inframe,inframe,COLOR_BGR2RGB);
+    cvtColor(inframe,inframe,COLOR_BGR2RGB);
     size_t img_size = 640*640;
     InferRequest::Ptr infer_request = _network.CreateInferRequestPtr();
     Blob::Ptr frameBlob = infer_request->GetBlob(_input_name);
@@ -126,13 +124,16 @@ bool Detector::process_frame(Mat& inframe,vector<Object>& detected_objects){
     vector<Rect> origin_rect;
     vector<float> origin_rect_cof;
     vector<int> label;
-
-    int s[3] = {80,40,20};
+    static int _i_out = 0;
+    int s[4] = {80,40,20,0};
     int i=0;
     for (auto &output : _outputinfo) {
         auto output_name = output.first;
         Blob::Ptr blob = infer_request->GetBlob(output_name);
-       parse_yolov5(blob,s[i],_cof_threshold,origin_rect,origin_rect_cof,label);
+        if(++_i_out == 4) {
+            continue;
+        }
+        parse_yolov5(blob,s[i],_cof_threshold,origin_rect,origin_rect_cof,label);
         ++i;
     }
     //后处理获得最终检测结果
@@ -144,16 +145,23 @@ bool Detector::process_frame(Mat& inframe,vector<Object>& detected_objects){
     }
     for(size_t i=0;i<final_id.size();++i){
         Rect resize_rect= origin_rect[final_id[i]];
+        float rect_center_x  = resize_rect.x + resize_rect.width * 0.5;
+        if(rect_center_x < inframe.rows/4 || rect_center_x > 3 *inframe.rows/4) 
+        {
+            continue;
+        }
         detected_objects.push_back(Object{
             origin_rect_cof[final_id[i]],
             names2[label[final_id[i]]],
             resize_rect,
             label[final_id[i]],
-            std::abs(inframe.cols * 0.5  - resize_rect.y),
-            std::abs(inframe.rows * 0.5  - resize_rect.x),
-            std::pow(inframe.rows * 0.8 - resize_rect.y,2) + std::pow(inframe.cols * 0.5 - resize_rect.x,2)
+            static_cast<int>(std::abs(inframe.cols * 0.5  - resize_rect.y)),
+            static_cast<int>(std::abs(inframe.rows * 0.5  - resize_rect.x)),
+            static_cast<int>(std::pow(inframe.rows * 0.8 - resize_rect.y,2) +
+                             std::pow(inframe.cols * 0.5 - resize_rect.x,2))
         });
     }
+    cvtColor(inframe, inframe, COLOR_RGB2BGR);
     return true;
 }
 

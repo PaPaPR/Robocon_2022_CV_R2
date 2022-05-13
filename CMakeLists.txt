@@ -7,6 +7,8 @@ option(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O0 -g -Wfatal-errors -D_MWAITXINTRIN_H_INCLUDED -pthread")
 
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # add_definitions(-DRELEASE)
 
 add_executable(Robocon_2022_CV_R2 main.cpp)
@@ -26,11 +28,11 @@ find_package(fmt REQUIRED)
 target_link_libraries(Robocon_2022_CV_R2 fmt::fmt)
 
 #Camera
-add_library(MVSDK SHARED IMPORTED)
-add_library(Camera devices/camera/mv_video_capture.cpp)
-set(MIMDVISION_SDK_LIBRARY /lib/libMVSDK.so)
-set_property(TARGET MVSDK PROPERTY IMPORTED_LOCATION ${MIMDVISION_SDK_LIBRARY})
-target_link_libraries(Robocon_2022_CV_R2 Camera MVSDK)
+# add_library(MVSDK SHARED IMPORTED)
+# add_library(Camera devices/camera/mv_video_capture.cpp)
+# set(MIMDVISION_SDK_LIBRARY /lib/libMVSDK.so)
+# set_property(TARGET MVSDK PROPERTY IMPORTED_LOCATION ${MIMDVISION_SDK_LIBRARY})
+# target_link_libraries(Robocon_2022_CV_R2 Camera MVSDK)
 
 # new serial
 set(serial_SRCS
@@ -47,37 +49,39 @@ target_link_libraries(Robocon_2022_CV_R2 serial)
 # evdev
 target_link_libraries(Robocon_2022_CV_R2 evdev)
 
-#TensorRTx
-find_package(CUDA REQUIRED)
+# OpenVino
+include_directories(
+    ~/intel/openvino_2021/deployment_tools/inference_engine/include/
+    ~/intel/openvino_2021/deployment_tools/ngraph/include/
+)
+set(InferenceEngine_DIR "~/intel/openvino_2021/deployment_tools/inference_engine/share")
+find_package(InferenceEngine)
 
-# include and link dirs of cuda and tensorrt, you need adapt them if yours are different
-# cuda
-include_directories(/usr/local/cuda/include)
-link_directories(/usr/local/cuda/lib64)
-# tensorrt
-include_directories(/usr/include/x86_64-linux-gnu/)
-link_directories(/usr/lib/x86_64-linux-gnu/)
-
-cuda_add_library(myplugins SHARED TensorRTx/yololayer.cu) # 生成动态库 myplugins
-# target_link_libraries(myplugins nvinfer cudart) # nvinfer cudart 是 TensorRT的库?
-target_link_libraries(myplugins nvinfer) # nvinfer cudart 是 TensorRT的库?
+add_library (OpenVINO_Detector OpenVINO/detector.cpp)
+target_link_libraries(Robocon_2022_CV_R2 OpenVINO_Detector ${InferenceEngine_LIBRARIES})
 
 #OpenCV
 find_package(OpenCV)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-# 生成/×可×执×行×文×件×/ 动态库√ TensorRTx, 基于calibrator.cpp preprocess.cu
-cuda_add_library(TensorRTx SHARED TensorRTx/calibrator.cpp TensorRTx/yolov5.hpp TensorRTx/preprocess.cu) 
-
-# 把nvinfer、cudart、myplugins 和 opencv库 -->(链接到) TensorRTx
-target_link_libraries(TensorRTx nvinfer)
-# target_link_libraries(TensorRTx cudart)
-target_link_libraries(TensorRTx myplugins)
-target_link_libraries(TensorRTx ${OpenCV_LIBS})
-
-target_link_libraries(Robocon_2022_CV_R2 TensorRTx)
-
 set(CONFIG_FILE_PATH ${PROJECT_SOURCE_DIR}/configs)
 set(SOURCE_PATH ${PROJECT_SOURCE_DIR})
 target_compile_definitions(Robocon_2022_CV_R2 PRIVATE "CONFIG_FILE_PATH=\"${CONFIG_FILE_PATH}\"")
 target_compile_definitions(Robocon_2022_CV_R2 PRIVATE "SOURCE_PATH=\"${PROJECT_SOURCE_DIR}\"")
+
+
+#Image Record
+set(RECORD_IMG 1)
+if(${RECORD_IMG})
+set(PROJECTNAME_TEST IMGE_RECORD_RCR2)
+add_executable(${PROJECTNAME_TEST} 
+                ${PROJECT_SOURCE_DIR}/ImageAct/videoRecord.cpp
+                )       
+
+target_link_libraries(${PROJECTNAME_TEST}
+                PRIVATE
+                ${OpenCV_LIBS}
+                ${realsense2_LIBRARY}
+                fmt::fmt
+                )
+endif()

@@ -6,8 +6,6 @@
 #include <chrono>
 #include <opencv2/dnn/dnn.hpp>
 #include <cmath>
-#include "utils.hpp"
-
 
 using namespace std;
 using namespace cv;
@@ -16,7 +14,7 @@ using namespace InferenceEngine;
 class Detector
 {
 public:
-    typedef struct Object{
+    struct Object{
         float prob;
         std::string name;
         cv::Rect rect;
@@ -26,7 +24,7 @@ public:
         int dis_;
         bool operator < (const Object &y) const
         {
-            return dis_rows < y.dis_rows; 
+            return dis_cols < y.dis_cols; 
         }
     };
     Detector();
@@ -49,8 +47,8 @@ private:
     OutputsDataMap _outputinfo;
     string _input_name;
     //参数区
-    string _xml_path;                             //OpenVINO模型xml文件路径
-    double _cof_threshold;                //置信度阈值,计算方法是框置信度乘以物品种类置信度
+    string _xml_path;            //OpenVINO模型xml文件路径
+    double _cof_threshold;       //置信度阈值,计算方法是框置信度乘以物品种类置信度
     double _nms_area_threshold;  //nms最小重叠面积阈值
 };
 #endif
